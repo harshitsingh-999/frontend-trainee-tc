@@ -26,7 +26,7 @@ function Layout({ children, user, onLogout }) {
           </div>
         </div>
 
-        <nav className="nav">
+        {/* <nav className="nav">
           <NavLink
             to="/dashboard"
             className={({ isActive }) =>
@@ -43,7 +43,48 @@ function Layout({ children, user, onLogout }) {
           >
             User Form
           </NavLink>
-        </nav>
+        </nav> */}
+
+
+<nav className="nav">
+
+  {/* Show Dashboard ONLY if NOT Intern */}
+  {user?.role !== "Intern" && (
+    <NavLink
+      to="/dashboard"
+      className={({ isActive }) =>
+        isActive ? 'nav-link nav-link-active' : 'nav-link'
+      }
+    >
+      Dashboard
+    </NavLink>
+  )}
+
+    {user?.role === "Manager" && (
+  <NavLink
+    to="/manager"
+    className={({ isActive }) =>
+      isActive ? 'nav-link nav-link-active' : 'nav-link'
+    }
+  >
+    Manager Panel
+  </NavLink>
+)}
+
+  {/* Show UserForm ONLY if Intern */}
+  {user?.role === "Intern" && (
+    <NavLink
+      to="/user-form"
+      className={({ isActive }) =>
+        isActive ? 'nav-link nav-link-active' : 'nav-link'
+      }
+    >
+      User Form
+    </NavLink>
+  )}
+
+</nav>
+
       </aside>
 
       <div className="main-area">
