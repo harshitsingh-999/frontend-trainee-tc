@@ -1,169 +1,98 @@
-import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axiosClient from '../api/axiosClient';
+import React, { useState } from 'react'
+import { Navigate, useNavigate } from 'react-router-dom'
+import api from '../api/api'
 
-const Login = ({ onLogin, isAuthenticated }) => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({ identifier: '', password: '' });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+function Login({ onLogin, isAuthenticated }) {
+  const navigate = useNavigate()
+  const [formValues, setFormValues] = useState({
+    email: '',
+    password: '',
+  })
+  const [errorMsg, setErrorMsg] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
+  if (isAuthenticated) {
+    return <Navigate to="/dashboard" replace />
+  }
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const handleChange = (event) => {
+    const { name, value } = event.target
+    setFormValues((prev) => ({ ...prev, [name]: value }))
+  }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
+  const handleSubmit = async (event) => {
+    event.preventDefault()
+    setErrorMsg('')
+    setIsSubmitting(true)
 
     try {
-      const rawIdentifier = formData.identifier.trim();
-      const isEmailLogin = rawIdentifier.includes('@');
-      const loginPayload = isEmailLogin
-        ? { email: rawIdentifier, password: formData.password }
-        : { id: rawIdentifier, password: formData.password };
+      const res = await api.post('/users/login', {
+        email: formValues.email.trim().toLowerCase(),
+        password: formValues.password,
+      })
 
-      const response = await axiosClient.post('/api/v1/auth/login', loginPayload);
-      const payload = response?.data || {};
-
-      if (!payload.success) {
-        throw new Error(payload.message || 'Login failed');
-      }
-
-      const token = payload.token || payload?.data?.token;
-      const user = payload.user || payload?.data?.user;
-
-      if (!token || !user) {
-        throw new Error('Invalid login response from server');
-      }
-
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('user', JSON.stringify(user));
-      onLogin(user);
-
-      const isAdmin = user.role === 'admin' || user.role === 'Admin' || Number(user.role_id) === 1;
-      navigate(isAdmin ? '/admin/dashboard' : '/dashboard', { replace: true });
-    } catch (err) {
-      setError(err.response?.data?.message || err.message || 'Login failed. Please try again.');
+      onLogin(res.data.data)
+      navigate('/dashboard')
+    } catch (error) {
+      setErrorMsg(error.response?.data?.message || 'Login failed')
     } finally {
-      setLoading(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   return (
-    <div
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#0f172a'
-      }}
-    >
-      <div
-        style={{
-          background: '#1e293b',
-          borderRadius: 12,
-          padding: 32,
-          width: '100%',
-          maxWidth: 400
-        }}
-      >
-        <h2 style={{ color: '#f8fafc', marginBottom: 8, textAlign: 'center' }}>Welcome Back</h2>
-        <p style={{ color: '#64748b', textAlign: 'center', marginBottom: 24, fontSize: 14 }}>
-          Sign in to your account
+    <div className="login-page">
+      <div className="login-card">
+        <div className="login-logo">
+          <div className="login-mark">t:</div>
+          <div className="login-text">
+            <span className="login-name">teamComputers</span>
+            <span className="login-subtitle">Intern Management</span>
+          </div>
+        </div>
+
+        <h2 className="login-title">Welcome back</h2>
+        <p className="login-description">
+          Sign in to manage interns, buddies, and training progress.
         </p>
 
-        {error && (
-          <div
-            style={{
-              background: '#450a0a',
-              color: '#f87171',
-              padding: '10px 14px',
-              borderRadius: 8,
-              marginBottom: 16,
-              fontSize: 13
-            }}
-          >
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: 16 }}>
-            <label style={{ color: '#94a3b8', fontSize: 13, display: 'block', marginBottom: 6 }}>Email or ID</label>
+        <form className="login-form" onSubmit={handleSubmit}>
+          <div className="form-group">
+            <label htmlFor="email">Official Email</label>
             <input
-              type="text"
-              name="identifier"
-              value={formData.identifier}
+              id="email"
+              name="email"
+              type="email"
+              placeholder="name@teamcomputers.com"
+              value={formValues.email}
               onChange={handleChange}
-              placeholder="you@company.com or 1"
               required
-              disabled={loading}
-              style={{
-                width: '100%',
-                background: '#0f172a',
-                border: '1px solid #334155',
-                borderRadius: 8,
-                padding: '10px 12px',
-                color: '#f8fafc',
-                fontSize: 14,
-                boxSizing: 'border-box'
-              }}
             />
           </div>
 
-          <div style={{ marginBottom: 24 }}>
-            <label style={{ color: '#94a3b8', fontSize: 13, display: 'block', marginBottom: 6 }}>Password</label>
+          <div className="form-group">
+            <label htmlFor="password">Password</label>
             <input
-              type="password"
+              id="password"
               name="password"
-              value={formData.password}
+              type="password"
+              value={formValues.password}
               onChange={handleChange}
-              placeholder="********"
               required
-              disabled={loading}
-              style={{
-                width: '100%',
-                background: '#0f172a',
-                border: '1px solid #334155',
-                borderRadius: 8,
-                padding: '10px 12px',
-                color: '#f8fafc',
-                fontSize: 14,
-                boxSizing: 'border-box'
-              }}
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              width: '100%',
-              background: loading ? '#1e3a8a' : '#1e40af',
-              color: '#fff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '11px',
-              fontSize: 15,
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontWeight: 600
-            }}
-          >
-            {loading ? 'Signing in...' : 'Sign In'}
+          {errorMsg ? <p className="error-text">{errorMsg}</p> : null}
+
+          <button type="submit" className="btn-primary" disabled={isSubmitting}>
+            {isSubmitting ? 'Signing in...' : 'Login'}
           </button>
         </form>
+
+        <p className="login-footer">TeamComputers - People - Process - Technology</p>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default Login;
+export default Login
