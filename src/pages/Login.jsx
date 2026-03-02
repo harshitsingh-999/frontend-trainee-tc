@@ -1,14 +1,15 @@
 import React, { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
-
-const roles = ['Admin', 'Manager', 'Intern', 'Trainee', 'Buddy']
+import api from '../api/api'
 
 function Login({ onLogin, isAuthenticated }) {
   const navigate = useNavigate()
   const [formValues, setFormValues] = useState({
-    employeeId: '',
-    role: 'Intern',
+    email: '',
+    password: '',
   })
+  const [errorMsg, setErrorMsg] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
@@ -19,10 +20,24 @@ function Login({ onLogin, isAuthenticated }) {
     setFormValues((prev) => ({ ...prev, [name]: value }))
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
-    onLogin(formValues)
-    navigate('/dashboard')
+    setErrorMsg('')
+    setIsSubmitting(true)
+
+    try {
+      const res = await api.post('/users/login', {
+        email: formValues.email.trim().toLowerCase(),
+        password: formValues.password,
+      })
+
+      onLogin(res.data.data)
+      navigate('/dashboard')
+    } catch (error) {
+      setErrorMsg(error.response?.data?.message || 'Login failed')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -43,46 +58,41 @@ function Login({ onLogin, isAuthenticated }) {
 
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="employeeId">Employee / Intern ID</label>
+            <label htmlFor="email">Official Email</label>
             <input
-              id="employeeId"
-              name="employeeId"
-              type="text"
-              placeholder="TC-00123"
-              value={formValues.employeeId}
+              id="email"
+              name="email"
+              type="email"
+              placeholder="name@teamcomputers.com"
+              value={formValues.email}
               onChange={handleChange}
               required
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="role">Role</label>
-            <select
-              id="role"
-              name="role"
-              value={formValues.role}
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={formValues.password}
               onChange={handleChange}
-            >
-              {roles.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
+              required
+            />
           </div>
 
-          <button type="submit" className="btn-primary">
-            Login
+          {errorMsg ? <p className="error-text">{errorMsg}</p> : null}
+
+          <button type="submit" className="btn-primary" disabled={isSubmitting}>
+            {isSubmitting ? 'Signing in...' : 'Login'}
           </button>
         </form>
 
-        <p className="login-footer">
-          TeamComputers · People · Process · Technology
-        </p>
+        <p className="login-footer">TeamComputers - People - Process - Technology</p>
       </div>
     </div>
   )
 }
 
 export default Login
-
