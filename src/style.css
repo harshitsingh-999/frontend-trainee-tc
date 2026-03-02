@@ -319,6 +319,12 @@ button {
   margin-bottom: 12px;
 }
 
+.error-text {
+  margin: 0;
+  font-size: 12px;
+  color: #b91c1c;
+}
+
 .login-footer {
   margin: 8px 0 0;
   font-size: 11px;

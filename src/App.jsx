@@ -8,10 +8,12 @@ import Layout from './components/Layout.jsx'
 function App() {
   const [user, setUser] = useState(null)
 
-  const handleLogin = (formValues) => {
+  const handleLogin = (apiUser) => {
     setUser({
-      name: formValues.employeeId || 'Team Member',
-      role: formValues.role,
+      id: apiUser.id,
+      name: apiUser.name || 'Team Member',
+      email: apiUser.email,
+      role: apiUser.role_id ? `Role ${apiUser.role_id}` : 'User',
     })
   }
 
@@ -36,17 +38,25 @@ function App() {
       <Route
         path="/user-form"
         element={
-          <Layout user={user} onLogout={handleLogout}>
-            <UserForm />
-          </Layout>
+          user ? (
+            <Layout user={user} onLogout={handleLogout}>
+              <UserForm />
+            </Layout>
+          ) : (
+            <Navigate to="/login" replace />
+          )
         }
       />
       <Route
         path="/dashboard"
         element={
-          <Layout user={user} onLogout={handleLogout}>
-            <Dashboard user={user} />
-          </Layout>
+          user ? (
+            <Layout user={user} onLogout={handleLogout}>
+              <Dashboard user={user} />
+            </Layout>
+          ) : (
+            <Navigate to="/login" replace />
+          )
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
@@ -55,4 +65,3 @@ function App() {
 }
 
 export default App
-
