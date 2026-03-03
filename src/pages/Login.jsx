@@ -1,14 +1,17 @@
 import React, { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
+import axiosClient from '../api/axiosClient'
 
 const roles = ['Admin', 'Manager', 'Intern', 'Trainee', 'Buddy']
 
 function Login({ onLogin, isAuthenticated }) {
   const navigate = useNavigate()
   const [formValues, setFormValues] = useState({
-    employeeId: '',
-    role: 'Intern',
+    email: '',
+    password: '',
   })
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
@@ -17,12 +20,35 @@ function Login({ onLogin, isAuthenticated }) {
   const handleChange = (event) => {
     const { name, value } = event.target
     setFormValues((prev) => ({ ...prev, [name]: value }))
+    setError('')
   }
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault()
-    onLogin(formValues)
-    navigate('/dashboard')
+    setLoading(true)
+    setError('')
+
+    try {
+      const response = await axiosClient.post('/api/v1/auth/login', {
+        email: formValues.email,
+        password: formValues.password,
+      })
+
+      if (response.data.success) {
+        // Store token and user data
+        localStorage.setItem('authToken', response.data.token)
+        localStorage.setItem('user', JSON.stringify(response.data.user))
+        
+        // Call parent's onLogin
+        onLogin(response.data.user)
+        
+        navigate('/dashboard')
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -41,38 +67,39 @@ function Login({ onLogin, isAuthenticated }) {
           Sign in to manage interns, buddies, and training progress.
         </p>
 
+        {error && <div className="error-message">{error}</div>}
+
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="form-group">
-            <label htmlFor="employeeId">Employee / Intern ID</label>
+            <label htmlFor="email">Email</label>
             <input
-              id="employeeId"
-              name="employeeId"
-              type="text"
-              placeholder="TC-00123"
-              value={formValues.employeeId}
+              id="email"
+              name="email"
+              type="email"
+              placeholder="user@example.com"
+              value={formValues.email}
               onChange={handleChange}
               required
+              disabled={loading}
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="role">Role</label>
-            <select
-              id="role"
-              name="role"
-              value={formValues.role}
+            <label htmlFor="password">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="Enter your password"
+              value={formValues.password}
               onChange={handleChange}
-            >
-              {roles.map((role) => (
-                <option key={role} value={role}>
-                  {role}
-                </option>
-              ))}
-            </select>
+              required
+              disabled={loading}
+            />
           </div>
 
-          <button type="submit" className="btn-primary">
-            Login
+          <button type="submit" className="btn-primary" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login.jsx'
 import UserForm from './pages/UserForm.jsx'
@@ -7,16 +7,35 @@ import Layout from './components/Layout.jsx'
 
 function App() {
   const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
-  const handleLogin = (formValues) => {
-    setUser({
-      name: formValues.employeeId || 'Team Member',
-      role: formValues.role,
-    })
+  useEffect(() => {
+    // Check for stored user data on app load
+    const storedUser = localStorage.getItem('user')
+    if (storedUser) {
+      try {
+        setUser(JSON.parse(storedUser))
+      } catch (error) {
+        console.error('Failed to parse stored user:', error)
+        localStorage.removeItem('user')
+        localStorage.removeItem('authToken')
+      }
+    }
+    setLoading(false)
+  }, [])
+
+  const handleLogin = (userData) => {
+    setUser(userData)
   }
 
   const handleLogout = () => {
     setUser(null)
+    localStorage.removeItem('user')
+    localStorage.removeItem('authToken')
+  }
+
+  if (loading) {
+    return <div>Loading...</div>
   }
 
   return (
@@ -36,17 +55,25 @@ function App() {
       <Route
         path="/user-form"
         element={
-          <Layout user={user} onLogout={handleLogout}>
-            <UserForm />
-          </Layout>
+          user ? (
+            <Layout user={user} onLogout={handleLogout}>
+              <UserForm />
+            </Layout>
+          ) : (
+            <Navigate to="/login" replace />
+          )
         }
       />
       <Route
         path="/dashboard"
         element={
-          <Layout user={user} onLogout={handleLogout}>
-            <Dashboard user={user} />
-          </Layout>
+          user ? (
+            <Layout user={user} onLogout={handleLogout}>
+              <Dashboard user={user} />
+            </Layout>
+          ) : (
+            <Navigate to="/login" replace />
+          )
         }
       />
       <Route path="*" element={<Navigate to="/" replace />} />
