@@ -43,7 +43,7 @@ export default function Manager() {
   const [tasks,        setTasks]        = useState([])
   const [loading,      setLoading]      = useState(true)
   const [error,        setError]        = useState('')
-  const [tab,          setTab]          = useState('tasks')
+  const [tab,          setTab]          = useState('interns')
   const [showTaskForm, setShowTaskForm] = useState(false)
   const [editingTask,  setEditingTask]  = useState(null)
   const [taskForm,     setTaskForm]     = useState(EMPTY_TASK)
@@ -57,21 +57,35 @@ export default function Manager() {
   useEffect(() => { fetchAll() }, [])
 
   const fetchAll = async () => {
-    setLoading(true)
-    setError('')
-    try {
-      const [ir, tr] = await Promise.all([
-        api.get('/manager/interns'),
-        api.get('/manager/tasks'),
-      ])
-      setInterns(ir.data.data || [])
-      setTasks(tr.data.data || [])
-    } catch (e) {
-      setError(e.response?.data?.message || 'Failed to load data')
-    } finally {
-      setLoading(false)
-    }
-  }
+  // fetch interns and tasks separately so one failure doesn't block the other
+  setLoading(true)
+  setError('')
+
+  const internsResult = await api.get('/manager/interns').catch(() => null)
+  const tasksResult   = await api.get('/manager/tasks').catch(() => null)
+
+  if (internsResult) setInterns(internsResult.data.data || [])
+  if (tasksResult)   setTasks(tasksResult.data.data || [])
+
+  setLoading(false)
+}
+
+//   const fetchAll = async () => {
+//     setLoading(true)
+//     setError('')
+//     try {
+//       const [ir, tr] = await Promise.all([
+//         api.get('/manager/interns'),
+//         api.get('/manager/tasks'),
+//       ])
+//       setInterns(ir.data.data || [])
+//       setTasks(tr.data.data || [])
+//     } catch (e) {
+//       setError(e.response?.data?.message || 'Failed to load data')
+//     } finally {
+//       setLoading(false)
+//     }
+//   }
 
   const openCreate = () => {
     setEditingTask(null)
