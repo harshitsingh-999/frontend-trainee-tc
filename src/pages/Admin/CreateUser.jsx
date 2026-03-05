@@ -44,51 +44,67 @@ const CreateUser = () => {
 
   return (
     <div className="create-user">
-      <h1>Create New User</h1>
+      <h2>Create New User</h2>
       
       {message && <div className="success-message">{message}</div>}
       {error && <div className="error-message">{error}</div>}
       
       <form onSubmit={handleSubmit}>
-        <input
-          type="text"
-          name="name"
-          placeholder="Full Name"
-          value={formData.name}
-          onChange={handleChange}
-          required
-          disabled={loading}
-        />
-        <input
-          type="email"
-          name="email"
-          placeholder="Email"
-          value={formData.email}
-          onChange={handleChange}
-          required
-          disabled={loading}
-        />
-        <input
-          type="password"
-          name="password"
-          placeholder="Password"
-          value={formData.password}
-          onChange={handleChange}
-          required
-          disabled={loading}
-        />
-        <select
-          name="role_id"
-          value={formData.role_id}
-          onChange={handleChange}
-          disabled={loading}
-        >
-          <option value={4}>User (Default)</option>
-          <option value={1}>Admin</option>
-          <option value={3}>Manager</option>
-          <option value={2}>Trainee</option>
-        </select>
-        <button type="submit" disabled={loading}>
+        <div className="form-group">
+          <label>Full Name</label>
+          <input
+            type="text"
+            name="name"
+            placeholder="Full Name"
+            value={formData.name}
+            onChange={handleChange}
+            required
+            disabled={loading}
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Email</label>
+          <input
+            type="email"
+            name="email"
+            placeholder="Email"
+            value={formData.email}
+            onChange={handleChange}
+            required
+            disabled={loading}
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Password</label>
+          <input
+            type="password"
+            name="password"
+            placeholder="Password"
+            value={formData.password}
+            onChange={handleChange}
+            required
+            disabled={loading}
+          />
+        </div>
+
+        <div className="form-group">
+          <label>Role</label>
+          <select
+            name="role_id"
+            value={formData.role_id}
+            onChange={handleChange}
+            disabled={loading}
+          >
+            <option value={4}>User (Intern)</option>
+            <option value={1}>Admin</option>
+            <option value={2}>Manager</option>
+            <option value={3}>Trainee</option>
+          </select>
+        </div>
+
+        <button type="submit" disabled={loading} className="submit-btn">
           {loading ? 'Creating...' : 'Create User'}
         </button>
       </form>

@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import axiosClient from '../../api/axiosClient';
 
 const Dashboard = () => {
   const [metrics, setMetrics] = useState({});
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchMetrics();
@@ -11,14 +12,13 @@ const Dashboard = () => {
 
   const fetchMetrics = async () => {
     try {
-      const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/admin/dashboard`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('adminToken')}`
-        }
-      });
-      setMetrics(response.data.data);
-    } catch (error) {
-      console.error('Dashboard error:', error);
+      const response = await axiosClient.get('/api/v1/admin/dashboard');
+      if (response.data.success) {
+        setMetrics(response.data.data);
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to fetch dashboard metrics');
+      console.error('Dashboard error:', err);
     } finally {
       setLoading(false);
     }
@@ -27,8 +27,9 @@ const Dashboard = () => {
   if (loading) return <div className="loading">Loading metrics...</div>;
 
   return (
-    <div className="dashboard">
-      <h1>Dashboard Overview</h1>
+    <div className="admin-dashboard">
+      <h1>Admin Dashboard</h1>
+      {error && <div className="error-message">{error}</div>}
       <div className="metrics-grid">
         <div className="metric-card">
           <h3>Total Users</h3>
@@ -44,7 +45,7 @@ const Dashboard = () => {
         </div>
         <div className="metric-card">
           <h3>Pending Tasks</h3>
-          <div className="metric-value">{metrics.tasks?.pending || 0}</div>
+          <div className="metric-value">{metrics.pendingTasks || 0}</div>
         </div>
       </div>
     </div>
