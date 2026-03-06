@@ -12,11 +12,24 @@ function Layout({ children }) {
     navigate('/login')
   }
 
+/*
+const logout = async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch {
+      // Even if the API call fails, clear local state
+    }
+    setUser(null);
+  };
+
+
+*/
   if (location.pathname === '/login') return children
 
   // Only show nav links the user's role is allowed to see
   const navLinks = [
     { to: '/dashboard', label: 'Dashboard', roles: [1, 2, 3, 4] },
+    { to: '/attendance', label: 'Attendance', roles: [1, 2, 3, 4] },
     { to: '/manager',   label: 'Manager',   roles: [1, 2] },
     { to: '/user-form', label: 'User Form',  roles: [1] },
   ].filter(link => link.roles.includes(user?.role_id))

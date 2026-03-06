@@ -37,6 +37,13 @@ const EMPTY_TASK = {
   status: 'todo', completion_percentage: 0,
 }
 
+const formatDateTime = (value) => {
+  if (!value) return '-'
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) return value
+  return parsed.toLocaleString()
+}
+
 export default function Manager() {
   const { user } = useAuth()
   const [interns,      setInterns]      = useState([])
@@ -53,6 +60,10 @@ export default function Manager() {
   const [leaveSaving,  setLeaveSaving]  = useState(false)
   const [leaveError,   setLeaveError]   = useState('')
   const [leaveSuccess, setLeaveSuccess] = useState('')
+  const [submissionTask,    setSubmissionTask]    = useState(null)
+  const [taskSubmissions,   setTaskSubmissions]   = useState([])
+  const [submissionLoading, setSubmissionLoading] = useState(false)
+  const [submissionError,   setSubmissionError]   = useState('')
 
   useEffect(() => { fetchAll() }, [])
 
@@ -139,6 +150,29 @@ export default function Manager() {
     } catch (err) {
       alert(err.response?.data?.message || 'Failed to delete')
     }
+  }
+
+  const openSubmissions = async (task) => {
+    setSubmissionTask(task)
+    setTaskSubmissions([])
+    setSubmissionError('')
+    setSubmissionLoading(true)
+
+    try {
+      const res = await api.get(`/manager/tasks/${task.id}/submissions`)
+      setTaskSubmissions(res.data?.data || [])
+    } catch (err) {
+      setSubmissionError(err.response?.data?.message || 'Failed to load submissions')
+    } finally {
+      setSubmissionLoading(false)
+    }
+  }
+
+  const closeSubmissions = () => {
+    setSubmissionTask(null)
+    setTaskSubmissions([])
+    setSubmissionError('')
+    setSubmissionLoading(false)
   }
 
   const handleLeaveChange = (e) => {
@@ -242,6 +276,7 @@ export default function Manager() {
                       </td>
                       <td>
                         <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn-secondary btn-small" onClick={() => openSubmissions(task)}>Submissions</button>
                           <button className="btn-secondary btn-small" onClick={() => openEdit(task)}>Edit</button>
                           <button onClick={() => handleDelete(task.id)} style={{
                             padding: '4px 10px', borderRadius: 6, border: '1px solid #fecaca',
@@ -318,6 +353,56 @@ export default function Manager() {
             </div>
           </form>
         </section>
+      )}
+
+      {/* SUBMISSIONS MODAL */}
+      {submissionTask && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 700, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 12, marginBottom: 12 }}>
+              <div>
+                <h3 style={{ margin: 0 }}>Task Submissions</h3>
+                <p style={{ margin: '4px 0 0', color: '#6b7280' }}><strong>{submissionTask.title}</strong></p>
+              </div>
+              <button className="btn-secondary btn-small" onClick={closeSubmissions}>Close</button>
+            </div>
+
+            {submissionLoading && (
+              <p style={{ color: '#6b7280' }}>Loading submissions...</p>
+            )}
+
+            {!submissionLoading && submissionError && (
+              <p className="error-text">{submissionError}</p>
+            )}
+
+            {!submissionLoading && !submissionError && taskSubmissions.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '28px 0', color: '#9ca3af' }}>
+                No submissions yet for this task.
+              </div>
+            )}
+
+            {!submissionLoading && !submissionError && taskSubmissions.length > 0 && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                {taskSubmissions.map((submission) => (
+                  <div key={submission.id} style={{ border: '1px solid #e5e7eb', borderRadius: 12, padding: 12, background: '#f8fafc' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
+                      <strong>{submission.intern?.name || `Intern #${submission.submitted_by}`}</strong>
+                      <span style={{ fontSize: 12, color: '#6b7280' }}>{formatDateTime(submission.createdAt)}</span>
+                    </div>
+                    <p style={{ margin: '0 0 8px', color: '#374151', whiteSpace: 'pre-wrap' }}>{submission.work_notes}</p>
+                    {submission.file_url ? (
+                      <a href={submission.file_url} target="_blank" rel="noreferrer" style={{ color: '#0c4a6e', fontWeight: 600, fontSize: 12 }}>
+                        Open attachment{submission.file_name ? ` (${submission.file_name})` : ''}
+                      </a>
+                    ) : (
+                      <span style={{ color: '#9ca3af', fontSize: 12 }}>No file attached</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
       {/* TASK MODAL */}

@@ -7,6 +7,7 @@ import Manager        from './pages/manager.jsx'
 import UserForm       from './pages/UserForm.jsx'
 import Layout         from './components/Layout_manager.jsx'
 import ProtectedRoute from './components/proctedroutes.jsx'
+import Attendance     from './pages/attendence.jsx'
 
 function App() {
   const { user, loading } = useAuth()
@@ -16,6 +17,15 @@ function App() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+
+      <Route
+  path="/attendance"
+  element={
+    <ProtectedRoute>
+      <Layout><Attendance /></Layout>
+    </ProtectedRoute>
+  }
+/>
 
       <Route path="/dashboard" element={
         <ProtectedRoute>
