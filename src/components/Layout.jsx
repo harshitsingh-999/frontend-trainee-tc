@@ -1,11 +1,16 @@
 import React from 'react'
-import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate, Navigate } from 'react-router-dom'
 
 function Layout({ children, user, onLogout }) {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const isLoginPage = location.pathname === '/login'
+  const isLoginPage = location.pathname === '/'
+
+  // If not authenticated and not on login page, redirect to login
+  if (!user && !isLoginPage) {
+    return <Navigate to="/" replace />
+  }
 
   if (isLoginPage) {
     return children
@@ -26,25 +31,7 @@ function Layout({ children, user, onLogout }) {
           </div>
         </div>
 
-        {/* <nav className="nav">
-          <NavLink
-            to="/dashboard"
-            className={({ isActive }) =>
-              isActive ? 'nav-link nav-link-active' : 'nav-link'
-            }
-          >
-            Dashboard
-          </NavLink>
-          <NavLink
-            to="/user-form"
-            className={({ isActive }) =>
-              isActive ? 'nav-link nav-link-active' : 'nav-link'
-            }
-          >
-            User Form
-          </NavLink>
-        </nav> */}
-
+        
 
 <nav className="nav">
 
@@ -59,6 +46,63 @@ function Layout({ children, user, onLogout }) {
       Dashboard
     </NavLink>
   )}
+
+    {/* Intern Features */}
+
+{user?.role === "Intern" && (
+  <NavLink
+    to="/intern"
+    className={({ isActive }) =>
+      isActive ? 'nav-link nav-link-active' : 'nav-link'
+    }
+  >
+    Dashboard
+  </NavLink>
+)}
+
+{user?.role === "Intern" && (
+  <NavLink
+    to="/attendance"
+    className={({ isActive }) =>
+      isActive ? 'nav-link nav-link-active' : 'nav-link'
+    }
+  >
+    Attendance
+  </NavLink>
+)}
+
+{user?.role === "Intern" && (
+  <NavLink
+    to="/tasks"
+    className={({ isActive }) =>
+      isActive ? 'nav-link nav-link-active' : 'nav-link'
+    }
+  >
+    Tasks
+  </NavLink>
+)}
+
+{user?.role === "Intern" && (
+  <NavLink
+    to="/notifications"
+    className={({ isActive }) =>
+      isActive ? 'nav-link nav-link-active' : 'nav-link'
+    }
+  >
+    Notifications
+  </NavLink>
+)}
+
+{user?.role === "Intern" && (
+  <NavLink
+    to="/leave"
+    className={({ isActive }) =>
+      isActive ? 'nav-link nav-link-active' : 'nav-link'
+    }
+  >
+    Leave
+  </NavLink>
+)}
 
     {user?.role === "Manager" && (
   <NavLink

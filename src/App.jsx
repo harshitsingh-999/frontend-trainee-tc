@@ -1,10 +1,12 @@
+
 // import React, { useState } from "react";
 // import { Routes, Route, Navigate } from "react-router-dom";
+// import Manager from "./pages/Manager.jsx";
+
 // import Login from "./pages/Login.jsx";
-// // import UserForm from './pages/UserForm.jsx'
 // import Dashboard from "./pages/Dashboard.jsx";
+// import UserForm from "./pages/UserForm.jsx";
 // import Layout from "./components/Layout.jsx";
-// import Intern from "./pages/Intern.jsx";
 
 // function App() {
 //   const [user, setUser] = useState(null);
@@ -22,10 +24,13 @@
 
 //   return (
 //     <Routes>
+//       {/* LOGIN ROUTE */}
 //       <Route
 //         path="/login"
 //         element={<Login onLogin={handleLogin} isAuthenticated={!!user} />}
 //       />
+
+//       {/* ROOT REDIRECT */}
 //       <Route
 //         path="/"
 //         element={
@@ -34,23 +39,22 @@
 //           </Layout>
 //         }
 //       />
-//       {/* { <Route
+
+//       {/* USER FORM — ONLY INTERN */}
+//       <Route
 //         path="/user-form"
 //         element={
-//           <Layout user={user} onLogout={handleLogout}>
-//             <UserForm />
-//           </Layout>
-//         } } */}
-
-//       <Route
-//         path="/intern"
-//         element={
-//           <Layout user={user} onLogout={handleLogout}>
-//             <Intern user={user} />
-//           </Layout>
+//           user?.role === "Intern" ? (
+//             <Layout user={user} onLogout={handleLogout}>
+//               <UserForm />
+//             </Layout>
+//           ) : (
+//             <Navigate to="/dashboard" replace />
+//           )
 //         }
 //       />
 
+//       {/* DASHBOARD — ALL EXCEPT INTERN */}
 //       <Route
 //         path="/dashboard"
 //         element={
@@ -63,6 +67,21 @@
 //           )
 //         }
 //       />
+
+//       <Route
+//   path="/manager"
+//   element={
+//     user?.role === "Manager" ? (
+//       <Layout user={user} onLogout={handleLogout}>
+//         <Manager />
+//       </Layout>
+//     ) : (
+//       <Navigate to="/dashboard" replace />
+//     )
+//   }
+// />
+
+//       {/* FALLBACK */}
 //       <Route path="*" element={<Navigate to="/" replace />} />
 //     </Routes>
 //   );
@@ -72,17 +91,20 @@
 
 
 
-
-
-
 import React, { useState } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import Manager from "./pages/Manager.jsx";
 
 import Login from "./pages/Login.jsx";
 import Dashboard from "./pages/Dashboard.jsx";
-import UserForm from "./pages/UserForm.jsx";
 import Layout from "./components/Layout.jsx";
+import Intern from "./pages/Intern.jsx";
+
+import Attendance from "./pages/Attendance.jsx";
+import Task from "./pages/Task.jsx";
+import Notifications from "./pages/Notifications.jsx";
+import Leave from "./pages/Leave.jsx";
+import Manager from "./pages/Manager.jsx";
+import UserForm from "./pages/UserForm.jsx";
 
 function App() {
   const [user, setUser] = useState(null);
@@ -98,67 +120,150 @@ function App() {
     setUser(null);
   };
 
+  const ProtectedRoute = ({ component: Component, ...props }) => {
+    return (
+      <Layout user={user} onLogout={handleLogout}>
+        {Component}
+      </Layout>
+    );
+  };
+
   return (
     <Routes>
-      {/* LOGIN ROUTE */}
-      <Route
-        path="/login"
-        element={<Login onLogin={handleLogin} isAuthenticated={!!user} />}
-      />
 
-      {/* ROOT REDIRECT */}
-      <Route
-        path="/"
+      {/* Login Page */}
+      <Route path="/" element={<Login onLogin={handleLogin} isAuthenticated={!!user} />} />
+
+      {/* Dashboard - for Admin and Manager only */}
+      <Route 
+        path="/dashboard" 
         element={
-          <Layout user={user} onLogout={handleLogout}>
-            <Navigate to={user ? "/dashboard" : "/login"} replace />
-          </Layout>
-        }
+          <ProtectedRoute 
+            component={
+              user?.role === "Intern" ? (
+                <Navigate to="/attendance" replace />
+              ) : (
+                <Dashboard user={user} />
+              )
+            }
+          />
+        } 
       />
 
-      {/* USER FORM — ONLY INTERN */}
-      <Route
-        path="/user-form"
+      {/* Intern - for Interns */}
+      <Route 
+        path="/intern" 
         element={
-          user?.role === "Intern" ? (
-            <Layout user={user} onLogout={handleLogout}>
-              <UserForm />
-            </Layout>
-          ) : (
-            <Navigate to="/dashboard" replace />
-          )
-        }
+          <ProtectedRoute 
+            component={
+              user?.role === "Intern" ? (
+                <Intern user={user} />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+        } 
       />
 
-      {/* DASHBOARD — ALL EXCEPT INTERN */}
-      <Route
-        path="/dashboard"
+      {/* Attendance - for Interns */}
+      <Route 
+        path="/attendance" 
         element={
-          user?.role === "Intern" ? (
-            <Navigate to="/user-form" replace />
-          ) : (
-            <Layout user={user} onLogout={handleLogout}>
-              <Dashboard user={user} />
-            </Layout>
-          )
-        }
+          <ProtectedRoute 
+            component={
+              user?.role === "Intern" ? (
+                <Attendance />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+        } 
       />
 
-      <Route
-  path="/manager"
-  element={
-    user?.role === "Manager" ? (
-      <Layout user={user} onLogout={handleLogout}>
-        <Manager />
-      </Layout>
-    ) : (
-      <Navigate to="/dashboard" replace />
-    )
-  }
-/>
+      {/* Tasks - for Interns */}
+      <Route 
+        path="/tasks" 
+        element={
+          <ProtectedRoute 
+            component={
+              user?.role === "Intern" ? (
+                <Task />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+        } 
+      />
 
-      {/* FALLBACK */}
+      {/* Notifications - for Interns */}
+      <Route 
+        path="/notifications" 
+        element={
+          <ProtectedRoute 
+            component={
+              user?.role === "Intern" ? (
+                <Notifications />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+        } 
+      />
+
+      {/* Leave - for Interns */}
+      <Route 
+        path="/leave" 
+        element={
+          <ProtectedRoute 
+            component={
+              user?.role === "Intern" ? (
+                <Leave />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+        } 
+      />
+
+      {/* Manager Panel - for Managers only */}
+      <Route 
+        path="/manager" 
+        element={
+          <ProtectedRoute 
+            component={
+              user?.role === "Manager" ? (
+                <Manager />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+        } 
+      />
+
+      {/* User Form - for Interns */}
+      <Route 
+        path="/user-form" 
+        element={
+          <ProtectedRoute 
+            component={
+              user?.role === "Intern" ? (
+                <UserForm />
+              ) : (
+                <Navigate to="/dashboard" replace />
+              )
+            }
+          />
+        } 
+      />
+
       <Route path="*" element={<Navigate to="/" replace />} />
+
     </Routes>
   );
 }

@@ -25,14 +25,11 @@ function Login({ onLogin, isAuthenticated }) {
   const handleSubmit = (e) => {
     e.preventDefault();
     onLogin(formValues);
-
-    if (formValues.role === "Intern") {
-      navigate("/user-form");
-    } else if (formValues.role === "Manager") {
-      navigate("/manager");
-    } else {
+    
+    // Navigate to dashboard - the App will redirect based on role
+    setTimeout(() => {
       navigate("/dashboard");
-    }
+    }, 100);
   };
 
   return (
