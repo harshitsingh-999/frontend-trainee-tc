@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react'
 import api from '../api/login_api.js'
 
+// const [evaluations, setEvaluations] = useState([]);
+
 const PRIORITY_COLORS = {
   low:      { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0' },
   medium:   { bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
@@ -21,6 +23,7 @@ function Badge({ value, map }) {
   return (
     <span style={{
       background: s.bg, color: s.text,
+      maxWidth: 'fit-content',
       border: `1px solid ${s.border || s.bg}`,
       borderRadius: 6, padding: '2px 10px',
       fontSize: 12, fontWeight: 600, textTransform: 'capitalize',
@@ -46,6 +49,8 @@ function SubmitModal({ task, onClose, onSubmit }) {
   const [file,        setFile]        = useState(null)
   const [submitting,  setSubmitting]  = useState(false)
   const [error,       setError]       = useState('')
+  
+//   const [evaluations, setEvaluations] = useState([])
   const fileRef = useRef()
 
   const handleFile = (e) => {
@@ -286,8 +291,14 @@ export default function InternTasks() {
   const [updateForm, setUpdateForm] = useState({})
   const [successMsg, setSuccessMsg] = useState('')
   const [submitTask, setSubmitTask] = useState(null)
+  const [evaluations, setEvaluations] = useState([])
 
-  useEffect(() => { fetchTasks() }, [])
+ useEffect(() => {
+  fetchTasks()
+  api.get('/intern/evaluations').then(r => setEvaluations(r.data.data || [])).catch(() => {})
+}, [])
+//   api.get('/intern/evaluations').then(r => setEvaluations(r.data.data || [])).catch(() => {})
+
 
   const fetchTasks = async () => {
     setLoading(true)
@@ -512,6 +523,40 @@ export default function InternTasks() {
           })}
         </div>
       )}
+      {evaluations.length > 0 && (
+  <section className="card" style={{ marginTop: 24 }}>
+    <div className="card-header">
+      <div><h3>⭐ My Evaluations</h3><p>Performance scores from your manager.</p></div>
+    </div>
+    {evaluations.map(ev => (
+      <div key={ev.id} style={{ background: '#f8fafc', borderRadius: 10, padding: '16px 20px', border: '1px solid #e2e8f0', marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+          <span style={{ fontWeight: 600 }}>{ev.evaluation_date}</span>
+          <span style={{ fontWeight: 700, color: '#00b1b4', fontSize: 18 }}>Overall: {ev.overall_score} / 5</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
+          {[
+            { label: 'Technical',       value: ev.technical_skills },
+            { label: 'Communication',   value: ev.communication },
+            { label: 'Teamwork',        value: ev.teamwork },
+            { label: 'Problem Solving', value: ev.problem_solving },
+            { label: 'Punctuality',     value: ev.punctuality },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ background: '#fff', borderRadius: 8, padding: '10px 14px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>{label}</div>
+              <div style={{ fontSize: 18 }}>{'⭐'.repeat(value)}{'☆'.repeat(5 - value)}</div>
+            </div>
+          ))}
+        </div>
+        {ev.comments && (
+          <div style={{ marginTop: 10, padding: '10px 14px', background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 14, color: '#374151' }}>
+            💬 {ev.comments}
+          </div>
+        )}
+      </div>
+    ))}
+  </section>
+)}
     </div>
   )
 }

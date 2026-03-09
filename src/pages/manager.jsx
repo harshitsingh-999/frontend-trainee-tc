@@ -64,7 +64,10 @@ export default function Manager() {
   const [taskSubmissions,   setTaskSubmissions]   = useState([])
   const [submissionLoading, setSubmissionLoading] = useState(false)
   const [submissionError,   setSubmissionError]   = useState('')
-
+  const [evalIntern,  setEvalIntern]  = useState(null)
+  const [evalForm,    setEvalForm]    = useState({ technical_skills: 3, communication: 3, teamwork: 3, problem_solving: 3, punctuality: 3, comments: '' })
+  const [evalSaving,  setEvalSaving]  = useState(false)
+  const [evalSuccess, setEvalSuccess] = useState('')
   useEffect(() => { fetchAll() }, [])
 
   const fetchAll = async () => {
@@ -141,6 +144,18 @@ export default function Manager() {
       setTaskSaving(false)
     }
   }
+  const submitEvaluation = async () => {
+  setEvalSaving(true)
+  try {
+    await api.post('/manager/evaluations', { trainee_id: evalIntern.id, ...evalForm })
+    setEvalSuccess(`Evaluation saved for ${evalIntern.user?.name}!`)
+    setEvalIntern(null)
+  } catch (err) {
+    alert(err.response?.data?.message || 'Failed to save evaluation')
+  } finally {
+    setEvalSaving(false)
+  }
+}
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this task?')) return
@@ -195,6 +210,16 @@ export default function Manager() {
       setLeaveSaving(false)
     }
   }
+//   const submitEvaluation = async () => {
+//   setEvalSaving(true)
+//   try {
+//     await api.post('/manager/evaluations', { trainee_id: evalIntern.id, ...evalForm })
+//     setEvalSuccess(`Evaluation saved for ${evalIntern.user?.name}!`)
+//     setEvalIntern(null)
+//   } catch (err) {
+//     alert(err.response?.data?.message || 'Failed to save')
+//   } finally { setEvalSaving(false) }
+// }
 
   if (loading) return <div style={{ padding: 40, color: '#6b7280' }}>Loading manager dashboard…</div>
 
@@ -303,16 +328,26 @@ export default function Manager() {
             <ul className="list">
               {interns.map(trainee => (
                 <li key={trainee.id} className="list-item">
-                  <div>
-                    <div className="list-title">{trainee.user?.name || 'Unknown'}</div>
-                    <div className="list-subtitle">
-                      {trainee.user?.email} · {trainee.course || 'N/A'} · Ends: {trainee.expected_end_date || 'N/A'}
-                    </div>
-                  </div>
-                  <span className={`pill ${trainee.current_status === 'active' ? 'pill-green' : 'pill-soft'}`} style={{ textTransform: 'capitalize' }}>
-                    {trainee.current_status}
-                  </span>
-                </li>
+  <div>
+    <div className="list-title">{trainee.user?.name || 'Unknown'}</div>
+    <div className="list-subtitle">
+      {trainee.user?.email} · {trainee.course || 'N/A'} · Ends: {trainee.expected_end_date || 'N/A'}
+    </div>
+  </div>
+  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+    <span className={`pill ${trainee.current_status === 'active' ? 'pill-green' : 'pill-soft'}`} style={{ textTransform: 'capitalize' }}>
+      {trainee.current_status}
+    </span>
+    <button
+      onClick={() => {
+        setEvalIntern(trainee)
+        setEvalForm({ technical_skills: 3, communication: 3, teamwork: 3, problem_solving: 3, punctuality: 3, comments: '' })
+      }}
+      style={{ padding: '6px 14px', borderRadius: 8, border: 'none', background: '#003b5c', color: '#fff', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}>
+      ⭐ Evaluate
+    </button>
+  </div>
+</li>
               ))}
             </ul>
           )}
@@ -487,6 +522,63 @@ export default function Manager() {
           </div>
         </div>
       )}
+      {/* EVALUATION MODAL */}
+{evalIntern && (
+  <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 16 }}
+    onClick={e => { if (e.target === e.currentTarget) setEvalIntern(null) }}>
+    <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 500, boxShadow: '0 25px 60px rgba(0,0,0,0.25)' }}>
+
+      <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div>
+          <h3 style={{ margin: 0, color: '#003b5c' }}>Evaluate Intern</h3>
+          <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: 13 }}>{evalIntern.user?.name}</p>
+        </div>
+        <button onClick={() => setEvalIntern(null)} style={{ background: 'none', border: 'none', fontSize: 22, cursor: 'pointer', color: '#9ca3af' }}>✕</button>
+      </div>
+
+      <div style={{ padding: '20px 24px' }}>
+        {[
+          { key: 'technical_skills', label: '💻 Technical Skills' },
+          { key: 'communication',    label: '🗣️ Communication' },
+          { key: 'teamwork',         label: '🤝 Teamwork' },
+          { key: 'problem_solving',  label: '🧠 Problem Solving' },
+          { key: 'punctuality',      label: '⏰ Punctuality' },
+        ].map(({ key, label }) => (
+          <div key={key} style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+              <label style={{ fontWeight: 600, fontSize: 14 }}>{label}</label>
+              <span style={{ fontWeight: 700, color: '#00b1b4', fontSize: 18 }}>
+                {'⭐'.repeat(evalForm[key])}{'☆'.repeat(5 - evalForm[key])}
+              </span>
+            </div>
+            <input type="range" min={1} max={5} step={1}
+              value={evalForm[key]}
+              onChange={e => setEvalForm(prev => ({ ...prev, [key]: Number(e.target.value) }))}
+              style={{ width: '100%', accentColor: '#00b1b4' }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#9ca3af' }}>
+              <span>Poor</span><span>Average</span><span>Excellent</span>
+            </div>
+          </div>
+        ))}
+        <div style={{ marginBottom: 0 }}>
+          <label style={{ display: 'block', fontWeight: 600, fontSize: 14, marginBottom: 6 }}>Comments (optional)</label>
+          <textarea value={evalForm.comments} rows={3}
+            onChange={e => setEvalForm(prev => ({ ...prev, comments: e.target.value }))}
+            placeholder="Write any specific feedback for this intern..."
+            style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1.5px solid #e2e8f0', fontFamily: 'inherit', fontSize: 14, resize: 'vertical', boxSizing: 'border-box' }} />
+        </div>
+      </div>
+
+      <div style={{ padding: '16px 24px', borderTop: '1px solid #e5e7eb', display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+        <button className="btn-secondary" onClick={() => setEvalIntern(null)}>Cancel</button>
+        <button onClick={submitEvaluation} disabled={evalSaving}
+          style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: '#00b1b4', color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
+          {evalSaving ? 'Saving…' : '⭐ Save Evaluation'}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
     </div>
   )
 }
