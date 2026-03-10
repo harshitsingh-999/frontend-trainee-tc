@@ -1453,3 +1453,16 @@ button {
     align-self: stretch;
   }
 } */ 
+
+/* Full-page app view after login */
+body.authenticated {
+  background: var(--tc-bg);
+}
+
+body.authenticated .app-shell {
+  max-width: none;
+  margin: 0;
+  min-height: 100vh;
+  border-radius: 0;
+  box-shadow: none;
+}

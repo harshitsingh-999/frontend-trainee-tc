@@ -322,6 +322,7 @@ const EMPTY_FORM = {
   firstName: '',
   lastName: '',
   email: '',
+  password: '',
   phone: '',
   dob: '',
   gender: '',
@@ -354,6 +355,7 @@ function UserForm() {
           firstName: editUser.firstName || editUser.name?.split(' ')[0] || '',
           lastName: editUser.lastName || editUser.name?.split(' ')[1] || '',
           email: editUser.email || '',
+          password: '',
           phone: editUser.phone || '',
           dob: editUser.dob || '',
           gender: editUser.gender || '',
@@ -391,11 +393,18 @@ function UserForm() {
 
     try {
       const payload = {
-        ...formValues,
         name: `${formValues.firstName} ${formValues.lastName}`.trim(),
+        email: formValues.email,
+        phone: formValues.phone,
+        password: formValues.password,
+        role_id: editUser?.role_id || 4,
+        is_active: 1,
       }
 
       if (isEditMode) {
+        if (!payload.password) {
+          delete payload.password
+        }
         await updateUser(editUser.id, payload)
         setSuccessMsg('User updated successfully!')
       } else {
@@ -474,6 +483,19 @@ function UserForm() {
                 required
               />
             </div>
+            {!isEditMode ? (
+              <div className="form-group">
+                <label htmlFor="password">Password</label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  value={formValues.password}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            ) : null}
             <div className="form-group">
               <label htmlFor="phone">Mobile Number</label>
               <input

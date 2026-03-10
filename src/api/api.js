@@ -27,14 +27,39 @@ export const getUsers = (params = {}) =>
   });
 
 /** Create a new user */
-export const createUser = (data) => api.post("/admin/users", data);
+export const createUser = async (data) => {
+  try {
+    return await api.post("/admin/users", data);
+  } catch (error) {
+    if (error?.response?.status === 404) {
+      return api.post("/users", data);
+    }
+    throw error;
+  }
+};
 
 /** Update user details */
 export const updateUser = (id, data) => api.put(`/admin/users/${id}`, data);
 
 /** Toggle active / inactive status */
-export const toggleUserStatus = (id, isActive) =>
-  api.put(`/admin/users/${id}`, { is_active: isActive ? 1 : 0 });
+export const toggleUserStatus = async (id, isActive) => {
+  const payloadAdmin = { is_active: isActive ? 1 : 0 };
+  const payloadStatus = { isActive };
+
+  try {
+    return await api.put(`/admin/users/${id}`, payloadAdmin);
+  } catch (firstError) {
+    if (firstError?.response?.status !== 404) throw firstError;
+  }
+
+  try {
+    return await api.patch(`/users/${id}/status`, payloadStatus);
+  } catch (secondError) {
+    if (secondError?.response?.status !== 404) throw secondError;
+  }
+
+  return api.put(`/admin/users/${id}/status`, payloadAdmin);
+};
 
 // ── Auth endpoints ──────────────────────────────────────────────────────────
 

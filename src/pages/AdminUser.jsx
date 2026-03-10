@@ -451,7 +451,18 @@ function Users() {
       )
       setTimeout(() => setSuccessMsg(''), 3000)
     } catch (err) {
-      setErrorMsg(err.response?.data?.message || 'Failed to update status.')
+      const backendMessage =
+        err?.response?.data?.message ||
+        err?.response?.data?.error ||
+        err?.response?.data?.msg
+      if (backendMessage) {
+        const status = err?.response?.status
+        setErrorMsg(status ? `${backendMessage} (HTTP ${status})` : backendMessage)
+      } else if (err?.response?.status) {
+        setErrorMsg(`Failed to update status (HTTP ${err.response.status}).`)
+      } else {
+        setErrorMsg('Failed to update status.')
+      }
     } finally {
       setTogglingId(null)
     }

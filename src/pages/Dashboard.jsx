@@ -1,5 +1,6 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useUser } from '../Contexts/UserContext'
 
 function daysRemaining() {
   const today = new Date()
@@ -12,21 +13,45 @@ function daysRemaining() {
 function Dashboard({ user }) {
   const navigate = useNavigate()
   const role = user?.role || 'Intern'
+  const { users, fetchUsers, loading, error } = useUser()
+  const [stats, setStats] = useState([])
 
   const remainingDays = daysRemaining()
 
-  const stats = [
-    { label: 'Active Interns', value: 42 },
-    { label: 'Buddies Assigned', value: 38 },
-    { label: 'Managers', value: 9 },
-    { label: 'Internships Ending This Month', value: 6 },
-  ]
+  // Fetch users when component mounts
+  useEffect(() => {
+    console.log('Dashboard mounting - fetching users')
+    fetchUsers()
+  }, [fetchUsers])
+
+  // Calculate stats from actual user data
+  useEffect(() => {
+    console.log('Users data updated:', users)
+    console.log('Users count:', users.length)
+    
+    if (users && users.length > 0) {
+      const totalUsers = users.length
+      const activeUsers = users.filter(u => u.is_active === 1 || u.is_active === true).length
+      const admins = users.filter(u => u.role_id === 1).length
+      const managers = users.filter(u => u.role_id === 2).length
+      const trainees = users.filter(u => u.role_id === 3).length
+      const interns = users.filter(u => u.role_id === 4).length
+
+      console.log('Calculated stats:', { totalUsers, activeUsers, admins, managers, trainees, interns })
+
+      setStats([
+        { label: 'Total Users', value: totalUsers },
+        { label: 'Active Users', value: activeUsers },
+        { label: 'Managers', value: managers },
+        { label: 'Trainees & Interns', value: trainees + interns },
+      ])
+    }
+  }, [users])
 
   const workLog = [
     {
       name: 'Ananya Sharma',
       role: 'Intern',
-      buddy: 'Rahul Verma',
       date: '24 Feb 2026',
       hours: '7.5',
       summary: 'Worked on UI for intern dashboard and bug fixes.',
@@ -34,7 +59,6 @@ function Dashboard({ user }) {
     {
       name: 'Rohan Singh',
       role: 'Trainee',
-      buddy: 'Priya Nair',
       date: '24 Feb 2026',
       hours: '6',
       summary: 'Prepared daily MIS reports and data clean-up.',
@@ -42,7 +66,6 @@ function Dashboard({ user }) {
     {
       name: 'Mehak Kaur',
       role: 'Intern',
-      buddy: 'Saurabh Gupta',
       date: '23 Feb 2026',
       hours: '8',
       summary: 'Shadowed client meetings and documented minutes.',
@@ -73,16 +96,30 @@ function Dashboard({ user }) {
           <div className="card-header">
             <div>
               <h3>Summary Overview</h3>
-              <p>Key numbers for the current internship batch.</p>
+              <p>Real-time data from your user management system ({users.length} Total Users)</p>
             </div>
+            <button 
+              onClick={() => fetchUsers()} 
+              disabled={loading}
+              style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '12px' }}
+            >
+              {loading ? '↻ Loading...' : '↻ Refresh'}
+            </button>
           </div>
+          {error && <div style={{ color: 'red', padding: '10px', marginBottom: '10px' }}>Error: {error}</div>}
           <div className="stats-grid">
-            {stats.map((item) => (
-              <div key={item.label} className="stat-card">
-                <div className="stat-label">{item.label}</div>
-                <div className="stat-value">{item.value}</div>
-              </div>
-            ))}
+            {loading && stats.length === 0 ? (
+              <div style={{ gridColumn: '1 / -1', padding: '20px', textAlign: 'center' }}>Loading user data...</div>
+            ) : stats.length > 0 ? (
+              stats.map((item) => (
+                <div key={item.label} className="stat-card">
+                  <div className="stat-label">{item.label}</div>
+                  <div className="stat-value">{item.value}</div>
+                </div>
+              ))
+            ) : (
+              <div style={{ gridColumn: '1 / -1', padding: '20px', textAlign: 'center' }}>No users data available</div>
+            )}
           </div>
         </section>
 
@@ -91,8 +128,7 @@ function Dashboard({ user }) {
             <div>
               <h3>Intern & Trainee Work Log</h3>
               <p>
-                Everyone can see daily work logs to stay aligned with their
-                buddy and manager.
+                Daily work logs for interns and trainees to track progress.
               </p>
             </div>
           </div>
@@ -102,7 +138,6 @@ function Dashboard({ user }) {
                 <tr>
                   <th>Intern / Trainee</th>
                   <th>Role</th>
-                  <th>Buddy</th>
                   <th>Date</th>
                   <th>Hours</th>
                   <th>Summary</th>
@@ -113,7 +148,6 @@ function Dashboard({ user }) {
                   <tr key={index}>
                     <td>{entry.name}</td>
                     <td>{entry.role}</td>
-                    <td>{entry.buddy}</td>
                     <td>{entry.date}</td>
                     <td>{entry.hours}</td>
                     <td>{entry.summary}</td>
@@ -163,7 +197,7 @@ function Dashboard({ user }) {
                 <div>
                   <div className="list-title">Ananya Sharma</div>
                   <div className="list-subtitle">
-                    Buddy: Rahul Verma · Track: Frontend
+                    Track: Frontend
                   </div>
                 </div>
                 <span className="pill pill-green">On Track</span>
@@ -172,7 +206,7 @@ function Dashboard({ user }) {
                 <div>
                   <div className="list-title">Rohan Singh</div>
                   <div className="list-subtitle">
-                    Buddy: Priya Nair · Track: Data & Reporting
+                    Track: Data & Reporting
                   </div>
                 </div>
                 <span className="pill pill-amber">Needs Attention</span>
@@ -181,7 +215,7 @@ function Dashboard({ user }) {
                 <div>
                   <div className="list-title">Mehak Kaur</div>
                   <div className="list-subtitle">
-                    Buddy: Saurabh Gupta · Track: Pre-sales
+                    Track: Pre-sales
                   </div>
                 </div>
                 <span className="pill pill-green">On Track</span>

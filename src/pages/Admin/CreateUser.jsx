@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import axiosClient from '../../api/axiosClient';
+import { useUser } from '../../Contexts/UserContext';
 
 const CreateUser = () => {
+  const { createUserData } = useUser();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -24,18 +25,12 @@ const CreateUser = () => {
     setMessage('');
     
     try {
-      const response = await axiosClient.post(
-        '/api/v1/admin/users', 
-        formData
-      );
-      
-      if (response.data.success) {
-        setMessage('User created successfully!');
-        setFormData({ name: '', email: '', password: '', role_id: 4 });
-        setTimeout(() => setMessage(''), 3000);
-      }
+      await createUserData(formData);
+      setMessage('User created successfully!');
+      setFormData({ name: '', email: '', password: '', role_id: 4 });
+      setTimeout(() => setMessage(''), 3000);
     } catch (err) {
-      const errorMsg = err.response?.data?.message || 'Error creating user!';
+      const errorMsg = err.message || 'Error creating user!';
       setError(errorMsg);
     } finally {
       setLoading(false);

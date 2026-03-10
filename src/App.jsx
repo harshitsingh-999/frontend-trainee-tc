@@ -5,6 +5,11 @@ import UserForm from './pages/UserForm.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Users from './pages/AdminUser.jsx'
 import Layout from './components/Layout.jsx'
+import { AdminRoute } from './Contexts/AuthContext.jsx'
+import AdminLayout from './pages/Admin/Layout.jsx'
+import AdminDashboard from './pages/Admin/Dashboard.jsx'
+import UsersList from './pages/Admin/UsersList.jsx'
+import CreateUser from './pages/Admin/CreateUser.jsx'
 
 // Map numeric role IDs to friendly names (adjust to match your backend)
 const ROLE_MAP = {
@@ -87,6 +92,21 @@ function App() {
           </ProtectedRoute>
         }
       />
+
+      {/* Admin Routes */}
+      <Route
+        path="/admin"
+        element={
+          <AdminRoute>
+            <AdminLayout />
+          </AdminRoute>
+        }
+      >
+        <Route path="dashboard" element={<AdminDashboard />} />
+        <Route path="users" element={<UsersList />} />
+        <Route path="create-user" element={<CreateUser />} />
+      </Route>
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 
 function Layout({ children, user, onLogout }) {
@@ -6,6 +6,18 @@ function Layout({ children, user, onLogout }) {
   const navigate = useNavigate()
 
   const isLoginPage = location.pathname === '/login'
+
+  useEffect(() => {
+    if (isLoginPage) {
+      document.body.classList.remove('authenticated')
+    } else {
+      document.body.classList.add('authenticated')
+    }
+
+    return () => {
+      document.body.classList.remove('authenticated')
+    }
+  }, [isLoginPage])
 
   if (isLoginPage) {
     return children
