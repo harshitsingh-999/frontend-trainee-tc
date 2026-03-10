@@ -8,7 +8,8 @@ import UserForm       from './pages/UserForm.jsx'
 import Layout         from './components/Layout_manager.jsx'
 import ProtectedRoute from './components/proctedroutes.jsx'
 import Attendance     from './pages/attendence.jsx'
-import InternTasks from './pages/interntask.jsx' 
+import InternTasks    from './pages/interntask.jsx'
+import MyLeaves       from './pages/myleaves.jsx'
 
 function App() {
   const { user, loading } = useAuth()
@@ -20,19 +21,22 @@ function App() {
       <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
 
       <Route path="/my-tasks" element={
-  <ProtectedRoute>
-    <Layout><InternTasks /></Layout>
-  </ProtectedRoute>
-} />
+        <ProtectedRoute>
+          <Layout><InternTasks /></Layout>
+        </ProtectedRoute>
+      } />
 
-      <Route
-  path="/attendance"
-  element={
-    <ProtectedRoute>
-      <Layout><Attendance /></Layout>
-    </ProtectedRoute>
-  }
-/>
+      <Route path="/my-leaves" element={
+        <ProtectedRoute requiredRoleIds={[4]}>
+          <Layout><MyLeaves /></Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/attendance" element={
+        <ProtectedRoute>
+          <Layout><Attendance /></Layout>
+        </ProtectedRoute>
+      } />
 
       <Route path="/dashboard" element={
         <ProtectedRoute>

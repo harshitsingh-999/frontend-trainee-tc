@@ -427,7 +427,7 @@ export default function ProfileDrawer({ open, onClose }) {
                     opacity: saving ? 0.7 : 1,
                   }}
                 >
-                  {saving ? 'Saving…' : isNew ? '📤 Submit Profile' : '💾 Save Changes'}
+                  {saving ? 'Saving…' : isNew ? ' Submit Profile' : ' Save Changes'}
                 </button>
               </>
             ) : (

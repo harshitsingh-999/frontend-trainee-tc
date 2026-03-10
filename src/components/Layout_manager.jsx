@@ -36,11 +36,12 @@ function Layout({ children }) {
   if (location.pathname === '/login') return children
 
   const navLinks = [
-    { to: '/dashboard',  label: '🏠  Dashboard',  roles: [1, 2, 3, 4] },
-    { to: '/attendance', label: '📅  Attendance',  roles: [1, 2, 3, 4] },
-    { to: '/my-tasks',   label: '✅  My Tasks',    roles: [4] },
-    { to: '/manager',    label: '👥  Manager',     roles: [1, 2] },
-    { to: '/user-form',  label: '📋  User Form',   roles: [1] },
+    { to: '/dashboard',  label: '  Dashboard',  roles: [1, 2, 3, 4] },
+    { to: '/attendance', label: '  Attendance',  roles: [1, 2, 3, 4] },
+    { to: '/my-tasks',   label: '  My Tasks',    roles: [4] },
+    { to: '/my-leaves',  label: '  My Leaves',   roles: [4] },
+    { to: '/manager',    label: '  Manager',     roles: [1, 2] },
+    { to: '/user-form',  label: '  User Form',   roles: [1] },
   ].filter(link => link.roles.includes(user?.role_id))
 
   return (

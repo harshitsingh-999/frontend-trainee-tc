@@ -16,6 +16,7 @@ const STATUS_COLORS = {
   review:      { bg: '#faf5ff', text: '#7c3aed' },
   completed:   { bg: '#f0fdf4', text: '#16a34a' },
   blocked:     { bg: '#fef2f2', text: '#dc2626' },
+  rejected:    { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
 }
 
 function Badge({ value, map }) {
@@ -292,10 +293,13 @@ export default function InternTasks() {
   const [successMsg, setSuccessMsg] = useState('')
   const [submitTask, setSubmitTask] = useState(null)
   const [evaluations, setEvaluations] = useState([])
+  const [trainee,    setTrainee]    = useState(null)
+  const [activeTab,  setActiveTab]  = useState('tasks')
 
  useEffect(() => {
   fetchTasks()
   api.get('/intern/evaluations').then(r => setEvaluations(r.data.data || [])).catch(() => {})
+  api.get('/intern/profile').then(r => setTrainee(r.data.data?.trainee || null)).catch(() => {})
 }, [])
 //   api.get('/intern/evaluations').then(r => setEvaluations(r.data.data || [])).catch(() => {})
 
@@ -348,6 +352,34 @@ export default function InternTasks() {
 
   if (loading) return <div style={{ padding: 40, color: '#6b7280' }}>Loading your tasks…</div>
 
+  // ── Timeline helpers ──
+  const formatDateShort = (d) => {
+    if (!d) return '—'
+    return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+  }
+  const timelineData = () => {
+    if (!trainee?.enrollment_date) return null
+    const start = new Date(trainee.enrollment_date)
+    const end   = trainee.expected_end_date ? new Date(trainee.expected_end_date) : null
+    const now   = new Date()
+    let pct = 0, daysLeft = null, totalDays = null
+    if (end) {
+      totalDays = Math.round((end - start) / (1000 * 60 * 60 * 24))
+      const elapsed = Math.round((now - start) / (1000 * 60 * 60 * 24))
+      pct = Math.min(100, Math.max(0, Math.round((elapsed / totalDays) * 100)))
+      daysLeft = Math.max(0, Math.round((end - now) / (1000 * 60 * 60 * 24)))
+    }
+    const milestones = end ? [
+      { label: 'Start', date: start, pct: 0 },
+      { label: '25%',   date: new Date(start.getTime() + (end - start) * 0.25), pct: 25 },
+      { label: 'Mid',   date: new Date(start.getTime() + (end - start) * 0.5),  pct: 50 },
+      { label: '75%',   date: new Date(start.getTime() + (end - start) * 0.75), pct: 75 },
+      { label: 'End',   date: end, pct: 100 },
+    ] : []
+    return { start, end, pct, daysLeft, totalDays, milestones }
+  }
+  const tl = timelineData()
+
   return (
     <div className="dashboard">
 
@@ -367,6 +399,24 @@ export default function InternTasks() {
         </div>
       </div>
 
+      {/* ── Tabs ── */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e5e7eb' }}>
+        {[
+          { key: 'tasks',    label: `✅ My Tasks (${tasks.length})` },
+          { key: 'timeline', label: '📅 Internship Timeline' },
+        ].map(t => (
+          <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
+            padding: '8px 20px', border: 'none', cursor: 'pointer', background: 'none',
+            fontWeight: activeTab === t.key ? 700 : 400,
+            color: activeTab === t.key ? '#00b1b4' : '#6b7280', fontSize: 14,
+            borderBottom: activeTab === t.key ? '2px solid #00b1b4' : '2px solid transparent',
+            marginBottom: -2,
+          }}>
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       {error && (
         <p style={{ color: '#dc2626', background: '#fef2f2', padding: '10px 14px',
           borderRadius: 8, marginBottom: 16, fontWeight: 600 }}>✗ {error}</p>
@@ -376,187 +426,323 @@ export default function InternTasks() {
           borderRadius: 8, marginBottom: 16, fontWeight: 600 }}>✓ {successMsg}</p>
       )}
 
-      {/* Stats */}
-      <div className="stats-grid" style={{ marginBottom: 24 }}>
-        <div className="stat-card"><div className="stat-label">Total</div><div className="stat-value">{total}</div></div>
-        <div className="stat-card"><div className="stat-label">In Progress</div><div className="stat-value">{inProgress}</div></div>
-        <div className="stat-card"><div className="stat-label">Completed</div><div className="stat-value">{completed}</div></div>
-        <div className="stat-card">
-          <div className="stat-label" style={{ color: overdue > 0 ? '#dc2626' : undefined }}>Overdue</div>
-          <div className="stat-value" style={{ color: overdue > 0 ? '#dc2626' : undefined }}>{overdue}</div>
-        </div>
-      </div>
-
-      {tasks.length === 0 ? (
-        <section className="card">
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9ca3af' }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
-            <p>No tasks assigned yet. Check back later.</p>
+      {/* ════════════════════════════════
+          TASKS TAB
+      ════════════════════════════════ */}
+      {activeTab === 'tasks' && (
+        <>
+          {/* Stats */}
+          <div className="stats-grid" style={{ marginBottom: 24 }}>
+            <div className="stat-card"><div className="stat-label">Total</div><div className="stat-value">{total}</div></div>
+            <div className="stat-card"><div className="stat-label">In Progress</div><div className="stat-value">{inProgress}</div></div>
+            <div className="stat-card"><div className="stat-label">Completed</div><div className="stat-value">{completed}</div></div>
+            <div className="stat-card">
+              <div className="stat-label" style={{ color: overdue > 0 ? '#dc2626' : undefined }}>Overdue</div>
+              <div className="stat-value" style={{ color: overdue > 0 ? '#dc2626' : undefined }}>{overdue}</div>
+            </div>
           </div>
-        </section>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          {tasks.map(task => {
-            const isOverdue  = new Date(task.due_date) < new Date() && task.status !== 'completed'
-            const isUpdating = updating === task.id
-            const canSubmit  = task.status !== 'completed' && task.status !== 'review'
 
-            return (
-              <section key={task.id} className="card" style={{
-                borderLeft: `4px solid ${
-                  task.status === 'completed' ? '#16a34a' :
-                  task.status === 'review'    ? '#7c3aed' :
-                  isOverdue                   ? '#dc2626' : '#00b1b4'
-                }`,
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between',
-                  alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+          {tasks.length === 0 ? (
+            <section className="card">
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: '#9ca3af' }}>
+                <div style={{ fontSize: 48, marginBottom: 12 }}>📋</div>
+                <p>No tasks assigned yet. Check back later.</p>
+              </div>
+            </section>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {tasks.map(task => {
+                const isOverdue  = new Date(task.due_date) < new Date() && task.status !== 'completed'
+                const isUpdating = updating === task.id
+                const isRejected = task.status === 'rejected'
+                const canSubmit  = task.status !== 'completed' && task.status !== 'review'
 
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10,
-                      marginBottom: 6, flexWrap: 'wrap' }}>
-                      <h3 style={{ margin: 0, fontSize: 16 }}>{task.title}</h3>
-                      <Badge value={task.priority} map={PRIORITY_COLORS} />
-                      <Badge value={task.status}   map={STATUS_COLORS} />
-                      {isOverdue && (
-                        <span style={{ background: '#fef2f2', color: '#dc2626',
-                          border: '1px solid #fecaca', borderRadius: 6,
-                          padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>
-                          ⚠ Overdue
-                        </span>
-                      )}
-                    </div>
+                return (
+                  <section key={task.id} className="card" style={{
+                    borderLeft: `4px solid ${
+                      task.status === 'completed' ? '#16a34a' :
+                      task.status === 'review'    ? '#7c3aed' :
+                      task.status === 'rejected'  ? '#dc2626' :
+                      isOverdue                   ? '#dc2626' : '#00b1b4'
+                    }`,
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between',
+                      alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
 
-                    {task.description && (
-                      <p style={{ margin: '0 0 10px', color: '#6b7280', fontSize: 14 }}>
-                        {task.description}
-                      </p>
-                    )}
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10,
+                          marginBottom: 6, flexWrap: 'wrap' }}>
+                          <h3 style={{ margin: 0, fontSize: 16 }}>{task.title}</h3>
+                          <Badge value={task.priority} map={PRIORITY_COLORS} />
+                          <Badge value={task.status}   map={STATUS_COLORS} />
+                          {isOverdue && (
+                            <span style={{ background: '#fef2f2', color: '#dc2626',
+                              border: '1px solid #fecaca', borderRadius: 6,
+                              padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>
+                              ⚠ Overdue
+                            </span>
+                          )}
+                        </div>
 
-                    <div style={{ display: 'flex', gap: 20, fontSize: 13,
-                      color: '#6b7280', flexWrap: 'wrap' }}>
-                      <span>📅 Due: <strong style={{ color: isOverdue ? '#dc2626' : '#374151' }}>
-                        {task.due_date}
-                      </strong></span>
-                      {task.tech_stack && <span>🛠 {task.tech_stack}</span>}
-                      {task.assigner  && <span>👤 By: <strong>{task.assigner.name}</strong></span>}
-                    </div>
+                        {task.description && (
+                          <p style={{ margin: '0 0 10px', color: '#6b7280', fontSize: 14 }}>
+                            {task.description}
+                          </p>
+                        )}
 
-                    {/* Progress bar */}
-                    <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-                      <div style={{ flex: 1, height: 8, background: '#e5e7eb',
-                        borderRadius: 99, overflow: 'hidden', maxWidth: 300 }}>
-                        <div style={{
-                          height: '100%', borderRadius: 99, background: '#00b1b4',
-                          width: `${task.completion_percentage || 0}%`,
-                          transition: 'width 0.3s',
-                        }} />
+                        <div style={{ display: 'flex', gap: 20, fontSize: 13,
+                          color: '#6b7280', flexWrap: 'wrap' }}>
+                          <span>📅 Due: <strong style={{ color: isOverdue ? '#dc2626' : '#374151' }}>
+                            {task.due_date}
+                          </strong></span>
+                          {task.tech_stack && <span>🛠 {task.tech_stack}</span>}
+                          {task.assigner  && <span>👤 By: <strong>{task.assigner.name}</strong></span>}
+                        </div>
+
+                        {/* Progress bar */}
+                        <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
+                          <div style={{ flex: 1, height: 8, background: '#e5e7eb',
+                            borderRadius: 99, overflow: 'hidden', maxWidth: 300 }}>
+                            <div style={{
+                              height: '100%', borderRadius: 99, background: '#00b1b4',
+                              width: `${task.completion_percentage || 0}%`,
+                              transition: 'width 0.3s',
+                            }} />
+                          </div>
+                          <span style={{ fontSize: 13, fontWeight: 600 }}>
+                            {task.completion_percentage || 0}%
+                          </span>
+                        </div>
+
+                        {/* Rejected banner */}
+                        {isRejected && (
+                          <div style={{
+                            marginTop: 12, padding: '10px 14px',
+                            background: '#fef2f2', border: '1px solid #fecaca',
+                            borderRadius: 8, fontSize: 13, color: '#dc2626', fontWeight: 600,
+                          }}>
+                            ✕ Your manager rejected this submission — please review the feedback and resubmit.
+                          </div>
+                        )}
                       </div>
-                      <span style={{ fontSize: 13, fontWeight: 600 }}>
-                        {task.completion_percentage || 0}%
-                      </span>
-                    </div>
-                  </div>
 
-                  {/* Action buttons */}
-                  {!isUpdating && (
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      {canSubmit && (
-                        <button
-                          onClick={() => setSubmitTask(task)}
-                          style={{
-                            padding: '8px 16px', borderRadius: 8, border: 'none',
-                            background: '#003b5c', color: '#fff',
-                            fontWeight: 700, fontSize: 13, cursor: 'pointer',
-                          }}
-                        >
-                          🚀 Submit
-                        </button>
+                      {/* Action buttons */}
+                      {!isUpdating && (
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          {canSubmit && (
+                            <button
+                              onClick={() => setSubmitTask(task)}
+                              style={{
+                                padding: '8px 16px', borderRadius: 8, border: 'none',
+                                background: isRejected ? '#dc2626' : '#003b5c',
+                                color: '#fff',
+                                fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                              }}
+                            >
+                              {isRejected ? '🔄 Resubmit' : 'Submit'}
+                            </button>
+                          )}
+                          {task.status !== 'completed' && (
+                            <button onClick={() => openUpdate(task)}
+                              className="btn-secondary btn-small">
+                              Update Progress
+                            </button>
+                          )}
+                        </div>
                       )}
-                      {task.status !== 'completed' && (
-                        <button onClick={() => openUpdate(task)}
-                          className="btn-secondary btn-small">
-                          Update Progress
-                        </button>
-                      )}
+                    </div>
+
+                    {/* Quick update form */}
+                    {isUpdating && (
+                      <div style={{
+                        marginTop: 16, padding: 16, background: '#f8fafc',
+                        borderRadius: 10, border: '1px solid #e2e8f0',
+                      }}>
+                        <h4 style={{ margin: '0 0 14px', fontSize: 14 }}>Quick Progress Update</h4>
+                        <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                          <div className="form-group" style={{ margin: 0 }}>
+                            <label>Status</label>
+                            <select name="status" value={updateForm.status} onChange={handleUpdateChange}>
+                              <option value="todo">Todo</option>
+                              <option value="in_progress">In Progress</option>
+                              <option value="review">Review</option>
+                              <option value="completed">Completed</option>
+                              <option value="blocked">Blocked</option>
+                            </select>
+                          </div>
+                          <div className="form-group" style={{ margin: 0, minWidth: 200 }}>
+                            <label>Completion — {updateForm.completion_percentage}%</label>
+                            <input type="range" name="completion_percentage"
+                              min={0} max={100} step={5}
+                              value={updateForm.completion_percentage}
+                              onChange={handleUpdateChange}
+                              style={{ width: '100%' }} />
+                          </div>
+                          <div style={{ display: 'flex', gap: 8 }}>
+                            <button className="btn-primary btn-small"
+                              onClick={() => saveUpdate(task.id)}>Save</button>
+                            <button className="btn-secondary btn-small"
+                              onClick={() => setUpdating(null)}>Cancel</button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </section>
+                )
+              })}
+            </div>
+          )}
+
+          {/* Evaluations */}
+          {evaluations.length > 0 && (
+            <section className="card" style={{ marginTop: 24 }}>
+              <div className="card-header">
+                <div><h3>My Evaluations</h3><p>Performance scores from your manager.</p></div>
+              </div>
+              {evaluations.map(ev => (
+                <div key={ev.id} style={{ background: '#f8fafc', borderRadius: 10, padding: '16px 20px', border: '1px solid #e2e8f0', marginBottom: 12 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <span style={{ fontWeight: 600 }}>{ev.evaluation_date}</span>
+                    <span style={{ fontWeight: 700, color: '#00b1b4', fontSize: 18 }}>Overall: {ev.overall_score} / 5</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
+                    {[
+                      { label: 'Technical',       value: ev.technical_skills },
+                      { label: 'Communication',   value: ev.communication },
+                      { label: 'Teamwork',        value: ev.teamwork },
+                      { label: 'Problem Solving', value: ev.problem_solving },
+                      { label: 'Punctuality',     value: ev.punctuality },
+                    ].map(({ label, value }) => (
+                      <div key={label} style={{ background: '#fff', borderRadius: 8, padding: '10px 14px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
+                        <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>{label}</div>
+                        <div style={{ fontSize: 18 }}>{'⭐'.repeat(value)}{'☆'.repeat(5 - value)}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {ev.comments && (
+                    <div style={{ marginTop: 10, padding: '10px 14px', background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 14, color: '#374151' }}>
+                      💬 {ev.comments}
                     </div>
                   )}
                 </div>
+              ))}
+            </section>
+          )}
+        </>
+      )}
 
-                {/* Quick update form */}
-                {isUpdating && (
-                  <div style={{
-                    marginTop: 16, padding: 16, background: '#f8fafc',
-                    borderRadius: 10, border: '1px solid #e2e8f0',
-                  }}>
-                    <h4 style={{ margin: '0 0 14px', fontSize: 14 }}>Quick Progress Update</h4>
-                    <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                      <div className="form-group" style={{ margin: 0 }}>
-                        <label>Status</label>
-                        <select name="status" value={updateForm.status} onChange={handleUpdateChange}>
-                          <option value="todo">Todo</option>
-                          <option value="in_progress">In Progress</option>
-                          <option value="review">Review</option>
-                          <option value="completed">Completed</option>
-                          <option value="blocked">Blocked</option>
-                        </select>
-                      </div>
-                      <div className="form-group" style={{ margin: 0, minWidth: 200 }}>
-                        <label>Completion — {updateForm.completion_percentage}%</label>
-                        <input type="range" name="completion_percentage"
-                          min={0} max={100} step={5}
-                          value={updateForm.completion_percentage}
-                          onChange={handleUpdateChange}
-                          style={{ width: '100%' }} />
-                      </div>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn-primary btn-small"
-                          onClick={() => saveUpdate(task.id)}>Save</button>
-                        <button className="btn-secondary btn-small"
-                          onClick={() => setUpdating(null)}>Cancel</button>
-                      </div>
+      {/* ════════════════════════════════
+          TIMELINE TAB
+      ════════════════════════════════ */}
+      {activeTab === 'timeline' && (
+        <section className="card">
+          <div className="card-header">
+            <div><h3>My Internship Timeline</h3><p>Track your internship progress from start to finish.</p></div>
+          </div>
+
+          {!trainee ? (
+            <div style={{ padding: 20, background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a', color: '#92400e', fontSize: 14 }}>
+              ⚠ No trainee profile found. Please ask your manager to set up your internship dates.
+            </div>
+          ) : !tl ? (
+            <div style={{ padding: 20, background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a', color: '#92400e', fontSize: 14 }}>
+              ⚠ Enrollment date not set. Please update your profile or ask your manager.
+            </div>
+          ) : (
+            <>
+              {/* Info cards */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
+                {[
+                  { label: 'College',    value: trainee.college_name || '—' },
+                  { label: 'Course',     value: trainee.course || '—' },
+                  { label: 'Batch Year', value: trainee.batch_year || '—' },
+                  { label: 'GPA',        value: trainee.gpa ? `${trainee.gpa} / 10` : '—' },
+                ].map(item => (
+                  <div key={item.label} style={{ background: '#f8fafc', borderRadius: 8, padding: '12px 14px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 3 }}>{item.label}</div>
+                    <div style={{ fontWeight: 600, color: '#003b5c', fontSize: 14 }}>{item.value}</div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Timeline bar */}
+              {tl.end ? (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontSize: 13, color: '#374151', fontWeight: 600 }}>Internship Progress</span>
+                    <span style={{ fontSize: 13, fontWeight: 700,
+                      color: tl.daysLeft === 0 ? '#16a34a' : tl.daysLeft <= 14 ? '#dc2626' : '#00b1b4' }}>
+                      {tl.daysLeft === 0 ? '✓ Completed!' : tl.daysLeft <= 14 ? `⚠ ${tl.daysLeft} days left` : `${tl.daysLeft} days remaining`}
+                    </span>
+                  </div>
+
+                  {/* Progress bar + milestones */}
+                  <div style={{ position: 'relative', marginBottom: 40 }}>
+                    <div style={{ height: 12, background: '#e5e7eb', borderRadius: 99 }}>
+                      <div style={{
+                        height: '100%', borderRadius: 99,
+                        background: tl.daysLeft <= 14 ? '#ef4444' : 'linear-gradient(90deg, #00b1b4, #003b5c)',
+                        width: `${tl.pct}%`, transition: 'width 0.5s ease',
+                      }} />
+                    </div>
+                    {tl.milestones.map(m => {
+                      const isPast = tl.pct >= m.pct
+                      return (
+                        <div key={m.label} style={{ position: 'absolute', top: -4, left: `${m.pct}%`, transform: 'translateX(-50%)' }}>
+                          <div style={{
+                            width: 20, height: 20, borderRadius: '50%',
+                            background: isPast ? '#003b5c' : '#fff',
+                            border: `3px solid ${isPast ? '#00b1b4' : '#d1d5db'}`,
+                          }} />
+                          <div style={{ position: 'absolute', top: 24, left: '50%', transform: 'translateX(-50%)',
+                            whiteSpace: 'nowrap', fontSize: 11, color: '#6b7280', textAlign: 'center' }}>
+                            <div style={{ fontWeight: 700, color: isPast ? '#003b5c' : '#9ca3af' }}>{m.label}</div>
+                            <div>{m.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#6b7280', marginBottom: 16 }}>
+                    <span>Started: <strong style={{ color: '#003b5c' }}>{formatDateShort(trainee.enrollment_date)}</strong></span>
+                    <span style={{ fontWeight: 800, fontSize: 22, color: '#003b5c' }}>{tl.pct}%</span>
+                    <span>Ends: <strong style={{ color: '#003b5c' }}>{formatDateShort(trainee.expected_end_date)}</strong></span>
+                  </div>
+
+                  {tl.totalDays && (
+                    <div style={{ textAlign: 'center', fontSize: 12, color: '#9ca3af' }}>
+                      Total internship duration: {tl.totalDays} days
+                    </div>
+                  )}
+
+                  {/* Task completion summary within timeline */}
+                  <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid #e5e7eb' }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, color: '#374151', marginBottom: 12 }}>Task Progress</div>
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                      {[
+                        { label: 'Total', value: total, color: '#003b5c' },
+                        { label: 'Completed', value: completed, color: '#16a34a' },
+                        { label: 'In Progress', value: inProgress, color: '#2563eb' },
+                        { label: 'Overdue', value: overdue, color: overdue > 0 ? '#dc2626' : '#9ca3af' },
+                      ].map(s => (
+                        <div key={s.label} style={{ background: '#f8fafc', borderRadius: 8, padding: '10px 18px', border: '1px solid #e2e8f0', textAlign: 'center', minWidth: 80 }}>
+                          <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
+                          <div style={{ fontSize: 11, color: '#9ca3af' }}>{s.label}</div>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                )}
-              </section>
-            )
-          })}
-        </div>
+                </>
+              ) : (
+                <div style={{ padding: 16, background: '#fffbeb', borderRadius: 8, border: '1px solid #fde68a', color: '#92400e', fontSize: 13 }}>
+                  ⚠ Expected end date not set. Contact your manager to complete your internship profile.
+                </div>
+              )}
+            </>
+          )}
+        </section>
       )}
-      {evaluations.length > 0 && (
-  <section className="card" style={{ marginTop: 24 }}>
-    <div className="card-header">
-      <div><h3>⭐ My Evaluations</h3><p>Performance scores from your manager.</p></div>
-    </div>
-    {evaluations.map(ev => (
-      <div key={ev.id} style={{ background: '#f8fafc', borderRadius: 10, padding: '16px 20px', border: '1px solid #e2e8f0', marginBottom: 12 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 12 }}>
-          <span style={{ fontWeight: 600 }}>{ev.evaluation_date}</span>
-          <span style={{ fontWeight: 700, color: '#00b1b4', fontSize: 18 }}>Overall: {ev.overall_score} / 5</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
-          {[
-            { label: 'Technical',       value: ev.technical_skills },
-            { label: 'Communication',   value: ev.communication },
-            { label: 'Teamwork',        value: ev.teamwork },
-            { label: 'Problem Solving', value: ev.problem_solving },
-            { label: 'Punctuality',     value: ev.punctuality },
-          ].map(({ label, value }) => (
-            <div key={label} style={{ background: '#fff', borderRadius: 8, padding: '10px 14px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>{label}</div>
-              <div style={{ fontSize: 18 }}>{'⭐'.repeat(value)}{'☆'.repeat(5 - value)}</div>
-            </div>
-          ))}
-        </div>
-        {ev.comments && (
-          <div style={{ marginTop: 10, padding: '10px 14px', background: '#fff', borderRadius: 8, border: '1px solid #e2e8f0', fontSize: 14, color: '#374151' }}>
-            💬 {ev.comments}
-          </div>
-        )}
-      </div>
-    ))}
-  </section>
-)}
     </div>
   )
 }
