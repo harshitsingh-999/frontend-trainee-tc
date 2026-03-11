@@ -11,8 +11,23 @@ function Login({ onLogin, isAuthenticated }) {
   const [errorMsg, setErrorMsg] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  const getRedirectPath = (user) => {
+    const role = user?.role?.toString?.().toLowerCase?.() || ''
+    const roleId = Number(user?.role_id)
+
+    if (role.includes('superadmin') || role === 'super admin' || roleId === 0) {
+      return '/superadmin/dashboard'
+    }
+    if (role === 'admin' || roleId === 1) {
+      return '/admin/dashboard'
+    }
+    return '/dashboard'
+  }
+
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
+    const storedUser = localStorage.getItem('user')
+    const parsedUser = storedUser ? JSON.parse(storedUser) : null
+    return <Navigate to={getRedirectPath(parsedUser)} replace />
   }
 
   const handleChange = (event) => {
@@ -58,7 +73,7 @@ function Login({ onLogin, isAuthenticated }) {
       }
 
       onLogin(resolvedUser)
-      navigate('/dashboard')
+      navigate(getRedirectPath(resolvedUser))
     } catch (error) {
       const backendMessage =
         error?.response?.data?.message ||

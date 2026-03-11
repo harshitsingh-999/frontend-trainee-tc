@@ -1,9 +1,12 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { FaBars, FaTachometerAlt, FaUsers, FaUserPlus } from 'react-icons/fa'
+
 
 function Layout({ children, user, onLogout }) {
   const location = useLocation()
   const navigate = useNavigate()
+  const [collapsed, setCollapsed] = useState(false)
 
   const isLoginPage = location.pathname === '/login'
 
@@ -25,7 +28,8 @@ function Layout({ children, user, onLogout }) {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar">
+
+      {/* <aside className="sidebar">
         <div
           className="brand"
           onClick={() => navigate('/dashboard')}
@@ -64,11 +68,53 @@ function Layout({ children, user, onLogout }) {
             Add User
           </NavLink>
         </nav>
+      </aside> */}
+      <aside className={`sidebar ${collapsed ? "collapsed" : ""}`}>
+
+        <div className="brand" onClick={() => navigate('/dashboard')}>
+          <div className="brand-mark">t:</div>
+
+          {!collapsed && (
+            <div className="brand-text">
+              <span className="brand-name">teamComputers</span>
+              <span className="brand-subtitle">Intern Management</span>
+            </div>
+          )}
+
+        </div>
+
+        <nav className="nav">
+
+          <NavLink to="/dashboard" className="nav-link">
+            <FaTachometerAlt />
+            {!collapsed && <span>Dashboard</span>}
+          </NavLink>
+
+          <NavLink to="/users" className="nav-link">
+            <FaUsers />
+            {!collapsed && <span>User Management</span>}
+          </NavLink>
+
+          <NavLink to="/user-form" className="nav-link">
+            <FaUserPlus />
+            {!collapsed && <span>Add User</span>}
+          </NavLink>
+
+        </nav>
+
       </aside>
+
 
       <div className="main-area">
         <header className="topbar">
           <div className="topbar-left">
+            <button
+              className="menu-btn"
+              onClick={() => setCollapsed(!collapsed)}
+            >
+              <FaBars />
+            </button>
+
             <h1 className="page-title">Intern Management System</h1>
             <p className="page-subtitle">
               Track interns, buddies, and managers in one place.

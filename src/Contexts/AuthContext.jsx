@@ -15,14 +15,10 @@ export const AuthProvider = ({ children }) => {
   //
   // Everything else stays exactly the same ✅
   // ─────────────────────────────────────────────────────
-  const token = "mock-token-dev";
-  const user = {
-    id: 1,
-    name: "Admin User",
-    email: "admin@company.com",
-    role: "admin",
-    role_id: 1
-  };
+  const token = localStorage.getItem("token");
+  const user = localStorage.getItem("user")
+    ? JSON.parse(localStorage.getItem("user"))
+    : null;
 
   return (
     <AuthContext.Provider value={{ user, token }}>
@@ -33,22 +29,39 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => useContext(AuthContext);
 
+export const SuperAdminRoute = ({ children }) => {
+  const storedUser = localStorage.getItem("user");
+  const user = storedUser ? JSON.parse(storedUser) : null;
+
+  if (!user) return <Navigate to="/login" replace />;
+
+  const roleId = Number(user.role_id);
+  const isSuperAdmin =
+    user.role?.toLowerCase?.().includes('superadmin') ||
+    user.role?.toLowerCase?.() === 'super admin' ||
+    roleId === 0 || 
+    roleId === 6 || 
+    roleId === 7;
+
+  if (!isSuperAdmin) return <Navigate to="/dashboard" replace />;
+
+  return children;
+};
+
 // ✅ AdminRoute — used in App.jsx to protect /admin routes
 // 🔧 DEVELOPMENT: always allows access (user is always admin)
 // 🔀 MERGE DAY: this works automatically once real user is in localStorage
 export const AdminRoute = ({ children }) => {
-  // Get real user from localStorage if available, else use mock
   const storedUser = localStorage.getItem("user");
-  const user = storedUser
-    ? JSON.parse(storedUser)
-    : { role: "admin", role_id: 1 }; // mock fallback during dev
+  const user = storedUser ? JSON.parse(storedUser) : null;
 
   if (!user) return <Navigate to="/login" replace />;
 
+  const roleId = Number(user.role_id);
   const isAdmin =
     user.role === "admin" ||
     user.role === "Admin" ||
-    user.role_id === 1;
+    roleId === 1;
 
   if (!isAdmin) return <Navigate to="/dashboard" replace />;
 

@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import React, { useState } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Login from './pages/Login.jsx'
@@ -5,47 +6,76 @@ import UserForm from './pages/UserForm.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Users from './pages/AdminUser.jsx'
 import Layout from './components/Layout.jsx'
-import { AdminRoute } from './Contexts/AuthContext.jsx'
+import { AdminRoute, SuperAdminRoute } from './Contexts/AuthContext.jsx'
 import AdminLayout from './pages/Admin/Layout.jsx'
+import SuperAdmin from './pages/SuperAdmin/SuperAdmin.jsx'
 import AdminDashboard from './pages/Admin/Dashboard.jsx'
 import UsersList from './pages/Admin/UsersList.jsx'
 import CreateUser from './pages/Admin/CreateUser.jsx'
 
 // Map numeric role IDs to friendly names (adjust to match your backend)
 const ROLE_MAP = {
+  0: 'SuperAdmin',
   1: 'Admin',
   2: 'Manager',
   3: 'Buddy',
   4: 'Intern',
   5: 'Trainee',
 }
+const SUPERADMIN_EMAILS = ['superadmin@company.com']
 
 function App() {
   const [user, setUser] = useState(null)
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user')
+    if (storedUser) {
+      setUser(JSON.parse(storedUser))
+    }
+  }, [])
 
   const handleLogin = (apiUser) => {
     if (!apiUser) return
+
+    const email = (apiUser.email || '').toLowerCase()
 
     const roleFromApi =
       typeof apiUser.role === 'string'
         ? apiUser.role
         : apiUser.role?.role_name
 
+    const roleIdRaw =
+      apiUser.role_id !== undefined && apiUser.role_id !== null
+        ? Number(apiUser.role_id)
+        : apiUser.role?.id !== undefined && apiUser.role?.id !== null
+        ? Number(apiUser.role.id)
+        : apiUser.role?.role_id !== undefined && apiUser.role?.role_id !== null
+        ? Number(apiUser.role.role_id)
+        : undefined
+    const roleId = Number.isNaN(roleIdRaw) ? undefined : roleIdRaw
+
+    const isSuperAdminByEmail = SUPERADMIN_EMAILS.includes(email)
+    const enforcedRoleId = isSuperAdminByEmail ? 0 : roleId
+    const enforcedRole = isSuperAdminByEmail ? 'SuperAdmin' : roleFromApi
+
     const role =
-      roleFromApi ||
-      ROLE_MAP[apiUser.role_id] ||
-      `Role ${apiUser.role_id}` ||
+      enforcedRole ||
+      ROLE_MAP[enforcedRoleId] ||
+      (enforcedRoleId !== undefined ? `Role ${enforcedRoleId}` : undefined) ||
       'User'
-    setUser({
+    const u = {
       id: apiUser.id,
       name: apiUser.name || 'Team Member',
-      email: apiUser.email,
+      email,
       role,
-    })
+      role_id: enforcedRoleId,
+    }
+    localStorage.setItem('user', JSON.stringify(u))
+    setUser(u)
   }
 
   const handleLogout = () => {
     localStorage.removeItem('token')
+    localStorage.removeItem('user')
     setUser(null)
   }
 
@@ -105,6 +135,26 @@ function App() {
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="users" element={<UsersList />} />
         <Route path="create-user" element={<CreateUser />} />
+      </Route>
+
+      {/* SuperAdmin Routes */}
+      {/* <Route
+        path="/superadmin"
+        element={
+          <SuperAdminRoute>
+            <SuperAdmin />
+          </SuperAdminRoute>
+        }
+      /> */}
+      <Route
+        path="/superadmin"
+        element={
+          <SuperAdminRoute>
+            <SuperAdmin />
+          </SuperAdminRoute>
+        }
+      >
+        <Route path="dashboard" element={<SuperAdmin />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
