@@ -45,9 +45,9 @@ a {
   display: grid;
   grid-template-columns: 260px minmax(0, 1fr);
   max-width: 1280px;
-  margin: 24px auto;
+  margin: 0;
   background: rgba(255, 255, 255, 0.96);
-  border-radius: 24px;
+  border-radius: 0;
   box-shadow: var(--shadow-soft);
   overflow: hidden;
 }
@@ -625,12 +625,82 @@ button {
   color: #92400e;
 }
 
-/* Responsive */
+/* ── HAMBURGER BUTTON ── */
+.hamburger-btn {
+  display: none;
+  flex-direction: column;
+  justify-content: center;
+  gap: 5px;
+  width: 38px;
+  height: 38px;
+  padding: 6px;
+  background: rgba(0, 177, 180, 0.08);
+  border: 1px solid var(--tc-border-subtle);
+  border-radius: 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
 
-@media (max-width: 960px) {
+.hamburger-btn span {
+  display: block;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--tc-navy);
+  transition: all 0.2s;
+}
+
+/* ── SIDEBAR CLOSE BUTTON (mobile only) ── */
+.sidebar-close-btn {
+  display: none;
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  background: rgba(255,255,255,0.15);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 16px;
+  width: 30px;
+  height: 30px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── SIDEBAR USER CHIP (bottom of sidebar) ── */
+.sidebar-user-chip {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  margin-top: auto;
+  padding: 12px 10px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 12px;
+}
+
+/* ── MOBILE BACKDROP ── */
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 998;
+}
+
+/* ── user-pill text — hide on very small screens ── */
+.user-pill-text {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── RESPONSIVE ── */
+
+/* Tablet: 720px–1024px — shrink sidebar */
+@media (max-width: 1024px) {
   .app-shell {
     grid-template-columns: 220px minmax(0, 1fr);
     margin: 12px;
+    border-radius: 18px;
   }
 
   .stats-grid {
@@ -642,21 +712,111 @@ button {
   }
 }
 
+/* Mobile: ≤720px — slide-in sidebar */
 @media (max-width: 720px) {
+
+  /* Remove fixed layout — stack vertically */
   .app-shell {
     grid-template-columns: minmax(0, 1fr);
+    margin: 0;
+    border-radius: 0;
+    min-height: 100vh;
   }
 
+  /* Sidebar slides in from the left as an overlay */
   .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 270px;
+    z-index: 999;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 0;
+    padding: 20px 16px;
+    gap: 20px;
+  }
+
+  /* When open, slide into view */
+  .sidebar.sidebar-open {
+    transform: translateX(0);
+  }
+
+  /* Show backdrop */
+  .sidebar-backdrop {
+    display: block;
+  }
+
+  /* Show ✕ close button inside sidebar */
+  .sidebar-close-btn {
+    display: flex;
+  }
+
+  /* Show user chip at bottom of sidebar */
+  .sidebar-user-chip {
+    display: flex;
+  }
+
+  /* Push brand down below close button */
+  .brand {
+    margin-top: 20px;
+  }
+
+  /* Show hamburger in topbar */
+  .hamburger-btn {
+    display: flex;
+  }
+
+  /* Topbar adjustments */
+  .topbar {
+    padding: 12px 14px;
+    gap: 10px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .page-title {
+    font-size: 15px;
+  }
+
+  .page-subtitle {
     display: none;
   }
 
-  .topbar {
-    padding-inline: 16px;
+  /* Hide user name text on very small screens, show only avatar */
+  .user-pill-text {
+    display: none;
   }
 
+  .user-pill {
+    padding: 4px;
+    border-radius: 999px;
+  }
+
+  /* Hide logout text — icon only if you want, or keep it small */
+  .logout-btn {
+    padding: 7px 12px;
+    font-size: 12px;
+  }
+
+  /* Content padding */
+  .content {
+    padding: 14px 12px 20px;
+  }
+
+  /* Grids collapse to 1 column */
   .grid-2,
   .grid-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 
@@ -667,6 +827,11 @@ button {
 
   .summary-badge {
     align-self: stretch;
+  }
+
+  /* Tables — allow horizontal scroll */
+  .table-wrapper {
+    overflow-x: auto;
   }
 }
 
