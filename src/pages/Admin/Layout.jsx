@@ -1,7 +1,10 @@
 import { Outlet, Link } from 'react-router-dom';
-import './admin.css'
+import { useState } from 'react';
+import './admin.css';
 
 const AdminLayout = () => {
+  const [collapsed, setCollapsed] = useState(false);
+
   const handleLogout = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
@@ -10,17 +13,39 @@ const AdminLayout = () => {
 
   return (
     <div className="admin-layout">
-      <aside className="admin-sidebar">
-        <h3>Admin Panel</h3>
+      <aside className={`admin-sidebar ${collapsed ? 'collapsed' : ''}`}>
+        <div className="sidebar-header">
+          <button className="hamburger" onClick={() => setCollapsed(!collapsed)}>
+            {collapsed ? '=' : 'X'}
+          </button>
+          {!collapsed && <h3>Admin Panel</h3>}
+        </div>
+
         <nav className="admin-nav">
-          <Link to="/admin/dashboard" className="admin-nav-link">📊 Dashboard</Link>
-          <Link to="/admin/users" className="admin-nav-link">👥 Manage Users</Link>
-          <Link to="/admin/create-user" className="admin-nav-link">➕ Create User</Link>
-          <Link to="/admin/trainees" className="admin-nav-link">🎓 Trainees</Link>
-          <button onClick={handleLogout} className="admin-logout-btn">🚪 Logout</button>
+          <Link to="/admin/dashboard" className="admin-nav-link">
+            {!collapsed && <span>Dashboard</span>}
+            {collapsed && <span title="Dashboard">D</span>}
+          </Link>
+          <Link to="/admin/users" className="admin-nav-link">
+            {!collapsed && <span>Manage Users</span>}
+            {collapsed && <span title="Manage Users">U</span>}
+          </Link>
+          <Link to="/admin/create-user" className="admin-nav-link">
+            {!collapsed && <span>Create User</span>}
+            {collapsed && <span title="Create User">+</span>}
+          </Link>
+          <Link to="/admin/trainees" className="admin-nav-link">
+            {!collapsed && <span>Trainees</span>}
+            {collapsed && <span title="Trainees">T</span>}
+          </Link>
+          <button onClick={handleLogout} className="admin-logout-btn">
+            {!collapsed && <span>Logout</span>}
+            {collapsed && <span title="Logout">Out</span>}
+          </button>
         </nav>
       </aside>
-      <main className="admin-content">
+
+      <main className={`admin-content ${collapsed ? 'expanded' : ''}`}>
         <Outlet />
       </main>
     </div>

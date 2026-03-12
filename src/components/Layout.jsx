@@ -87,7 +87,7 @@ function Layout({ children, user, onLogout }) {
 
           <NavLink to="/dashboard" className="nav-link">
             <FaTachometerAlt />
-            {!collapsed && <span>Dashboard</span>}
+            {!collapsed && <span>Dashboard1</span>}
           </NavLink>
 
           <NavLink to="/users" className="nav-link">
