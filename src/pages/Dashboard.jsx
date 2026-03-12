@@ -28,11 +28,10 @@ function formatTime(time) {
 }
 function Dashboard({ user }) {
   const navigate = useNavigate()
-  const role = user?.role || 'Intern'
   const { users, fetchUsers, loading, error } = useUser()
   const [stats, setStats] = useState([])
 
-  const { user, logout } = useAuth()
+  // const { user, logout } = useAuth()
 
   // ── ALL hooks must be at the top, before any early return ──
   const [todayAttendance,  setTodayAttendance]  = useState(null)

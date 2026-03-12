@@ -30,12 +30,11 @@ function Login({ onLogin, isAuthenticated }) {
     return <Navigate to={getRedirectPath(parsedUser)} replace />
   }
 
-function Login() {
-  const { user, login } = useAuth();
-  const navigate = useNavigate();
-  const [formValues, setFormValues] = useState({ email: "", password: "" });
-  const [errorMsg, setErrorMsg] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  // const { user, login } = useAuth();
+  // const navigate = useNavigate();
+  // const [formValues, setFormValues] = useState({ email: "", password: "" });
+  // const [errorMsg, setErrorMsg] = useState("");
+  // const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (event) => {
     event.preventDefault()
