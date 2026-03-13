@@ -3,23 +3,16 @@ import { Navigate } from "react-router-dom";
 
 const AuthContext = createContext();
 
+const SUPERADMIN_EMAILS = [
+  'superadmin@company.com',
+  'superadmin@teamcomputers.com',
+]
+
 export const AuthProvider = ({ children }) => {
-  // ─────────────────────────────────────────────────────
-  // 🔧 DEVELOPMENT: hardcoded admin user (no login needed)
-  // 🔀 MERGE DAY: replace these 2 lines with:
-  //
-  //   const token = localStorage.getItem("authToken");
-  //   const user = localStorage.getItem("user")
-  //     ? JSON.parse(localStorage.getItem("user"))
-  //     : null;
-  //
-  // Everything else stays exactly the same ✅
-  // ─────────────────────────────────────────────────────
   const token = localStorage.getItem("token");
   const user = localStorage.getItem("user")
     ? JSON.parse(localStorage.getItem("user"))
     : null;
-
   return (
     <AuthContext.Provider value={{ user, token }}>
       {children}
@@ -36,21 +29,22 @@ export const SuperAdminRoute = ({ children }) => {
   if (!user) return <Navigate to="/login" replace />;
 
   const roleId = Number(user.role_id);
+  const role = (user.role || '').toLowerCase().replace(/\s/g, '');
+  const email = (user.email || '').toLowerCase();
+
   const isSuperAdmin =
-    user.role?.toLowerCase?.().includes('superadmin') ||
-    user.role?.toLowerCase?.() === 'super admin' ||
-    roleId === 0 || 
-    roleId === 6 || 
-    roleId === 7;
+    roleId === 0 ||
+    roleId === 5 ||
+    roleId === 6 ||
+    roleId === 7 ||
+    role === 'superadmin' ||
+    role === 'super_admin' ||
+    SUPERADMIN_EMAILS.includes(email);
 
-  if (!isSuperAdmin) return <Navigate to="/dashboard" replace />;
-
+  if (!isSuperAdmin) return <Navigate to="/" replace />;
   return children;
 };
 
-// ✅ AdminRoute — used in App.jsx to protect /admin routes
-// 🔧 DEVELOPMENT: always allows access (user is always admin)
-// 🔀 MERGE DAY: this works automatically once real user is in localStorage
 export const AdminRoute = ({ children }) => {
   const storedUser = localStorage.getItem("user");
   const user = storedUser ? JSON.parse(storedUser) : null;
@@ -58,12 +52,16 @@ export const AdminRoute = ({ children }) => {
   if (!user) return <Navigate to="/login" replace />;
 
   const roleId = Number(user.role_id);
-  const isAdmin =
-    user.role === "admin" ||
-    user.role === "Admin" ||
-    roleId === 1;
+  const role = (user.role || '').toLowerCase().replace(/\s/g, '');
+  const email = (user.email || '').toLowerCase();
 
-  if (!isAdmin) return <Navigate to="/dashboard" replace />;
+  // SuperAdmin should NOT be redirected to admin panel
+  const isSuperAdmin =
+    roleId === 0 || roleId === 6 || roleId === 7 ||
+    role === 'superadmin' || SUPERADMIN_EMAILS.includes(email);
 
+  const isAdmin = (roleId === 1 || role === 'admin') && !isSuperAdmin;
+
+  if (!isAdmin) return <Navigate to="/" replace />;
   return children;
 };
