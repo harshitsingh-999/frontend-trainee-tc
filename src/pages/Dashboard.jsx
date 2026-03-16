@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/authcontext.jsx'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/login_api.js'
+import { useUser } from '../Contexts/UserContext'
 
 function daysRemaining() {
   const today = new Date()
@@ -28,17 +29,19 @@ function formatTime(time) {
 function Dashboard() {
   const { user, logout, loading } = useAuth()
   const navigate = useNavigate()
+  const { users, fetchUsers, loading: usersLoading, error: usersError } = useUser()
 
   // ── ALL hooks must be at the top, before any early return ──
-  const [todayAttendance,  setTodayAttendance]  = useState(null)
-  const [myTasks,          setMyTasks]          = useState([])
-  const [attendanceBusy,   setAttendanceBusy]   = useState(false)
-  const [attendanceMsg,    setAttendanceMsg]     = useState('')
-  const [attendanceErr,    setAttendanceErr]     = useState('')
+  const [todayAttendance,   setTodayAttendance]   = useState(null)
+  const [myTasks,           setMyTasks]           = useState([])
+  const [attendanceBusy,    setAttendanceBusy]    = useState(false)
+  const [attendanceMsg,     setAttendanceMsg]     = useState('')
+  const [attendanceErr,     setAttendanceErr]     = useState('')
   const [attendanceHistory, setAttendanceHistory] = useState([])
   const [interns,           setInterns]           = useState([])
   const [chartsReady,       setChartsReady]       = useState(false)
   const [ChartComponents,   setChartComponents]   = useState(null)
+  const [stats,             setStats]             = useState([])
 
   const isIntern  = user?.role_id === 4
   const isManager = user?.role_id === 1 || user?.role_id === 2
@@ -46,14 +49,8 @@ function Dashboard() {
   // Load recharts lazily — won't crash if not installed yet
   useEffect(() => {
     import('./charts.jsx')
-      .then(mod => {
-        setChartComponents(mod)
-        setChartsReady(true)
-      })
-      .catch(() => {
-        // recharts not installed yet — charts just won't show
-        setChartsReady(false)
-      })
+      .then(mod => { setChartComponents(mod); setChartsReady(true) })
+      .catch(() => setChartsReady(false))
   }, [])
 
   useEffect(() => {
@@ -68,20 +65,47 @@ function Dashboard() {
     }
   }, [isIntern, isManager])
 
+  // Fetch users for summary stats (admin/manager view)
+  useEffect(() => {
+    fetchUsers()
+  }, [fetchUsers])
+
+  // Build stats from real user data
+  useEffect(() => {
+    if (users && users.length > 0) {
+      const activeUsers = users.filter(u => u.is_active === 1 || u.is_active === true).length
+      const managers    = users.filter(u => u.role_id === 2).length
+      const trainees    = users.filter(u => u.role_id === 3).length
+      const internsCount = users.filter(u => u.role_id === 4).length
+      setStats([
+        { label: 'Total Users',         value: users.length },
+        { label: 'Active Users',         value: activeUsers },
+        { label: 'Managers',             value: managers },
+        { label: 'Trainees & Interns',   value: trainees + internsCount },
+      ])
+    } else {
+      // fallback while loading or no data
+      setStats([
+        { label: 'Active Interns',                value: '—' },
+        { label: 'Buddies Assigned',              value: '—' },
+        { label: 'Managers',                      value: '—' },
+        { label: 'Internships Ending This Month', value: '—' },
+      ])
+    }
+  }, [users])
+
   // Early returns AFTER all hooks
   if (loading) return <div style={{ padding: '30px' }}>Loading...</div>
 
-  const role         = user?.role || 'Intern'
+  const role          = user?.role || 'Intern'
   const remainingDays = daysRemaining()
-  const greeting     = getGreeting()
-  const checkedIn    = !!todayAttendance?.check_in_time
-  const checkedOut   = !!todayAttendance?.check_out_time
-  const pendingTasks = myTasks.filter(t => t.status !== 'completed').length
+  const greeting      = getGreeting()
+  const checkedIn     = !!todayAttendance?.check_in_time
+  const checkedOut    = !!todayAttendance?.check_out_time
+  const pendingTasks  = myTasks.filter(t => t.status !== 'completed').length
 
   const handleCheckIn = async () => {
-    setAttendanceBusy(true)
-    setAttendanceMsg('')
-    setAttendanceErr('')
+    setAttendanceBusy(true); setAttendanceMsg(''); setAttendanceErr('')
     try {
       const res = await api.post('/attendance/checkin')
       setAttendanceMsg(res.data.message)
@@ -89,15 +113,11 @@ function Dashboard() {
       setTodayAttendance(r.data.data)
     } catch (err) {
       setAttendanceErr(err.response?.data?.message || 'Check-in failed')
-    } finally {
-      setAttendanceBusy(false)
-    }
+    } finally { setAttendanceBusy(false) }
   }
 
   const handleCheckOut = async () => {
-    setAttendanceBusy(true)
-    setAttendanceMsg('')
-    setAttendanceErr('')
+    setAttendanceBusy(true); setAttendanceMsg(''); setAttendanceErr('')
     try {
       const res = await api.post('/attendance/checkout')
       setAttendanceMsg(res.data.message)
@@ -105,15 +125,20 @@ function Dashboard() {
       setTodayAttendance(r.data.data)
     } catch (err) {
       setAttendanceErr(err.response?.data?.message || 'Check-out failed')
-    } finally {
-      setAttendanceBusy(false)
-    }
+    } finally { setAttendanceBusy(false) }
   }
 
   const handleLogout = async () => {
     await logout()
     navigate('/login')
   }
+
+  // Work log data
+  const workLog = [
+    { name: 'Ananya Sharma', role: 'Intern',  date: '24 Feb 2026', hours: '7.5', summary: 'Worked on UI for intern dashboard and bug fixes.' },
+    { name: 'Rohan Singh',   role: 'Trainee', date: '24 Feb 2026', hours: '6',   summary: 'Prepared daily MIS reports and data clean-up.' },
+    { name: 'Mehak Kaur',    role: 'Intern',  date: '23 Feb 2026', hours: '8',   summary: 'Shadowed client meetings and documented minutes.' },
+  ]
 
   return (
     <div className="dashboard">
@@ -129,8 +154,7 @@ function Dashboard() {
           <div style={{
             width: 52, height: 52, borderRadius: 14,
             background: 'rgba(255,255,255,0.2)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 26,
+            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26,
           }}>
             {greeting.icon}
           </div>
@@ -146,7 +170,6 @@ function Dashboard() {
         </div>
 
         <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          {/* Attendance pill — interns only */}
           {isIntern && (
             <button
               onClick={checkedIn && !checkedOut ? handleCheckOut : !checkedIn ? handleCheckIn : undefined}
@@ -170,7 +193,6 @@ function Dashboard() {
             </button>
           )}
 
-          {/* Tasks pill — managers */}
           {isManager && (
             <button
               onClick={() => navigate('/manager')}
@@ -187,14 +209,12 @@ function Dashboard() {
             </button>
           )}
 
-          {/* Role pill */}
           <div style={{
             background: 'rgba(255,255,255,0.15)', borderRadius: 10,
             padding: '10px 18px', color: '#fff', fontSize: 13,
             display: 'flex', alignItems: 'center', gap: 8,
           }}>
-            <span>👤</span>
-            <span>{role}</span>
+            <span>👤</span><span>{role}</span>
           </div>
         </div>
       </div>
@@ -203,12 +223,8 @@ function Dashboard() {
       {isIntern && (
         <section className="card" style={{ marginBottom: 24 }}>
           <div className="card-header">
-            <div>
-              <h3>Today's Attendance</h3>
-              <p>Mark your arrival and departure for today.</p>
-            </div>
+            <div><h3>Today's Attendance</h3><p>Mark your arrival and departure for today.</p></div>
           </div>
-
           {attendanceMsg && (
             <p style={{ color: '#16a34a', background: '#f0fdf4', padding: '10px 14px',
               borderRadius: 8, marginBottom: 16, fontWeight: 600 }}>✓ {attendanceMsg}</p>
@@ -217,36 +233,20 @@ function Dashboard() {
             <p style={{ color: '#dc2626', background: '#fef2f2', padding: '10px 14px',
               borderRadius: 8, marginBottom: 16, fontWeight: 600 }}>✗ {attendanceErr}</p>
           )}
-
           <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button
-              onClick={handleCheckIn}
-              disabled={attendanceBusy || checkedIn}
-              style={{
-                padding: '12px 28px', borderRadius: 10, border: 'none',
-                fontSize: 15, fontWeight: 700,
+            <button onClick={handleCheckIn} disabled={attendanceBusy || checkedIn}
+              style={{ padding: '12px 28px', borderRadius: 10, border: 'none', fontSize: 15, fontWeight: 700,
                 cursor: checkedIn ? 'not-allowed' : 'pointer',
-                background: checkedIn ? '#e5e7eb' : '#00b1b4',
-                color: checkedIn ? '#9ca3af' : '#fff',
-              }}
-            >
+                background: checkedIn ? '#e5e7eb' : '#00b1b4', color: checkedIn ? '#9ca3af' : '#fff' }}>
               {checkedIn ? '✓ Checked In' : attendanceBusy ? 'Processing…' : '🟢 Check In'}
             </button>
-
-            <button
-              onClick={handleCheckOut}
-              disabled={attendanceBusy || !checkedIn || checkedOut}
-              style={{
-                padding: '12px 28px', borderRadius: 10, border: 'none',
-                fontSize: 15, fontWeight: 700,
+            <button onClick={handleCheckOut} disabled={attendanceBusy || !checkedIn || checkedOut}
+              style={{ padding: '12px 28px', borderRadius: 10, border: 'none', fontSize: 15, fontWeight: 700,
                 cursor: (!checkedIn || checkedOut) ? 'not-allowed' : 'pointer',
                 background: checkedOut ? '#e5e7eb' : checkedIn ? '#003b5c' : '#e5e7eb',
-                color: (!checkedIn || checkedOut) ? '#9ca3af' : '#fff',
-              }}
-            >
+                color: (!checkedIn || checkedOut) ? '#9ca3af' : '#fff' }}>
               {checkedOut ? '✓ Checked Out' : attendanceBusy ? 'Processing…' : '🔴 Check Out'}
             </button>
-
             <div style={{ display: 'flex', gap: 12, marginLeft: 8 }}>
               {[
                 { label: 'IN',     value: formatTime(todayAttendance?.check_in_time) },
@@ -260,15 +260,10 @@ function Dashboard() {
                 </div>
               ))}
             </div>
-
-            <button
-              onClick={() => navigate('/attendance')}
-              style={{
-                marginLeft: 'auto', padding: '10px 18px', borderRadius: 8,
+            <button onClick={() => navigate('/attendance')}
+              style={{ marginLeft: 'auto', padding: '10px 18px', borderRadius: 8,
                 border: '1px solid #00b1b4', background: 'transparent',
-                color: '#00b1b4', cursor: 'pointer', fontSize: 13, fontWeight: 600,
-              }}
-            >
+                color: '#00b1b4', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}>
               View Full History →
             </button>
           </div>
@@ -278,21 +273,23 @@ function Dashboard() {
       {/* ── MAIN GRID ── */}
       <div className="dashboard-grid">
 
-        {/* Summary Stats */}
+        {/* Summary Stats — real data from UserContext */}
         <section className="card">
           <div className="card-header">
             <div>
               <h3>Summary Overview</h3>
-              <p>Key numbers for the current internship batch.</p>
+              <p>Real-time data from your user management system ({users.length} Total Users)</p>
             </div>
+            <button onClick={() => fetchUsers()} disabled={usersLoading}
+              style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '12px' }}>
+              {usersLoading ? '↻ Loading...' : '↻ Refresh'}
+            </button>
           </div>
+          {usersError && <div style={{ color: 'red', padding: '10px', marginBottom: '10px' }}>Error: {usersError}</div>}
           <div className="stats-grid">
-            {[
-              { label: 'Active Interns',                value: 42 },
-              { label: 'Buddies Assigned',              value: 38 },
-              { label: 'Managers',                      value: 9  },
-              { label: 'Internships Ending This Month', value: 6  },
-            ].map(item => (
+            {usersLoading && stats.length === 0 ? (
+              <div style={{ gridColumn: '1 / -1', padding: '20px', textAlign: 'center' }}>Loading user data...</div>
+            ) : stats.map(item => (
               <div key={item.label} className="stat-card">
                 <div className="stat-label">{item.label}</div>
                 <div className="stat-value">{item.value}</div>
@@ -301,7 +298,7 @@ function Dashboard() {
           </div>
         </section>
 
-        {/* ── INTERN CHARTS ── only shown when recharts is installed */}
+        {/* Intern Charts */}
         {isIntern && chartsReady && ChartComponents && (
           <section className="card">
             <div className="card-header">
@@ -320,7 +317,7 @@ function Dashboard() {
           </section>
         )}
 
-        {/* ── MANAGER CHARTS ── */}
+        {/* Manager Charts */}
         {isManager && chartsReady && ChartComponents && (
           <section className="card">
             <div className="card-header">
@@ -357,9 +354,9 @@ function Dashboard() {
               </thead>
               <tbody>
                 {[
-                  { name: 'Ananya Sharma', role: 'Intern',   buddy: 'Rahul Verma',   date: '24 Feb 2026', hours: '7.5', summary: 'Worked on UI for intern dashboard and bug fixes.' },
-                  { name: 'Rohan Singh',   role: 'Trainee',  buddy: 'Priya Nair',    date: '24 Feb 2026', hours: '6',   summary: 'Prepared daily MIS reports and data clean-up.' },
-                  { name: 'Mehak Kaur',    role: 'Intern',   buddy: 'Saurabh Gupta', date: '23 Feb 2026', hours: '8',   summary: 'Shadowed client meetings and documented minutes.' },
+                  { name: 'Ananya Sharma', role: 'Intern',  buddy: 'Rahul Verma',   date: '24 Feb 2026', hours: '7.5', summary: 'Worked on UI for intern dashboard and bug fixes.' },
+                  { name: 'Rohan Singh',   role: 'Trainee', buddy: 'Priya Nair',    date: '24 Feb 2026', hours: '6',   summary: 'Prepared daily MIS reports and data clean-up.' },
+                  { name: 'Mehak Kaur',    role: 'Intern',  buddy: 'Saurabh Gupta', date: '23 Feb 2026', hours: '8',   summary: 'Shadowed client meetings and documented minutes.' },
                 ].map((entry, i) => (
                   <tr key={i}>
                     <td>{entry.name}</td><td>{entry.role}</td><td>{entry.buddy}</td>
@@ -371,7 +368,7 @@ function Dashboard() {
           </div>
         </section>
 
-        {/* Timeline */}
+        {/* Internship Timeline */}
         <section className="card">
           <div className="card-header">
             <div><h3>Internship Timeline</h3><p>Visualise how far you are into the internship.</p></div>
@@ -404,6 +401,20 @@ function Dashboard() {
                 </div>
                 <span className="pill pill-green">On Track</span>
               </li>
+              <li className="list-item">
+                <div>
+                  <div className="list-title">Rohan Singh</div>
+                  <div className="list-subtitle">Track: Data &amp; Reporting</div>
+                </div>
+                <span className="pill pill-amber">Needs Attention</span>
+              </li>
+              <li className="list-item">
+                <div>
+                  <div className="list-title">Mehak Kaur</div>
+                  <div className="list-subtitle">Track: Pre-sales</div>
+                </div>
+                <span className="pill pill-green">On Track</span>
+              </li>
             </ul>
           </section>
         )}
@@ -415,8 +426,12 @@ function Dashboard() {
               <div><h3>Admin Actions</h3><p>Create, update and manage users across roles.</p></div>
             </div>
             <div className="admin-actions">
-              <button className="btn-primary btn-small">Create New User</button>
-              <button className="btn-secondary btn-small">Manage Managers</button>
+              <button className="btn-primary btn-small" onClick={() => navigate('/user-form')}>
+                + Create New User
+              </button>
+              <button className="btn-secondary btn-small" onClick={() => navigate('/admin/users')}>
+                Manage Users
+              </button>
               <button className="btn-secondary btn-small">View Access Matrix</button>
             </div>
           </section>
@@ -1778,3 +1793,4 @@ function Dashboard() {
 //   → POST /auth/logout → backend clears cookie
 //   → AuthContext sets user to null
 //   → navigate to /login
+

@@ -2,6 +2,7 @@ import React from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/authcontext.jsx'
 
+
 function ProtectedRoute({ children, requiredRoleIds }) {
   const { user, loading } = useAuth()
 
@@ -13,6 +14,22 @@ function ProtectedRoute({ children, requiredRoleIds }) {
   }
 
   return children
+}
+
+export function AdminRoute({ children }) {
+  return (
+    <ProtectedRoute requiredRoleIds={[1]}>
+      {children}
+    </ProtectedRoute>
+  );
+}
+
+export function SuperAdminRoute({ children }) {
+  return (
+    <ProtectedRoute requiredRoleIds={[2]}>
+      {children}
+    </ProtectedRoute>
+  );
 }
 
 export default ProtectedRoute
