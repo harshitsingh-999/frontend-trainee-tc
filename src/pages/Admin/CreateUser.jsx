@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useUser } from '../../Contexts/UserContext';
+import { useUser } from '../../context/UserContext';
 
 const CreateUser = () => {
   const { createUserData } = useUser();

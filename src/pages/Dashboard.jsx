@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/authcontext.jsx'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/login_api.js'
-import { useUser } from '../Contexts/UserContext'
+import { useUser } from '../context/UserContext.jsx'
 
 function daysRemaining() {
   const today = new Date()

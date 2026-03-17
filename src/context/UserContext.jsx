@@ -15,7 +15,7 @@ export const UserProvider = ({ children }) => {
   try {
     console.log('Fetching users from API...');
 
-    const response = await axiosClient.get('/admin/users');
+    const response = await axiosClient.get('/admin/users', { params: { _ts: Date.now() } });
 
     console.log('API Response:', response.data);
 

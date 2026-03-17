@@ -1,5 +1,5 @@
 import React,{ useEffect, useState } from 'react';
-import { useUser } from '../../Contexts/UserContext';
+import { useUser } from '../../context/UserContext';
 
 const UsersList = () => {
   const { users, loading, error, fetchUsers, toggleUserStatus } = useUser();

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useUser } from '../../Contexts/UserContext'
+import { useUser } from '../../context/UserContext'
 
 function daysRemaining() {
   const today = new Date()
@@ -33,7 +33,7 @@ function AdminDashboard() {
   const workLog = [
     { name: 'Ananya Sharma', role: 'Intern',  date: '24 Feb 2026', hours: '7.5', summary: 'Worked on UI for intern dashboard and bug fixes.' },
     { name: 'Rohan Singh',   role: 'Trainee', date: '24 Feb 2026', hours: '6',   summary: 'Prepared daily MIS reports and data clean-up.' },
-    { name: 'Mehak Kaur',    role: 'Intern',  date: '23 Feb 2026', hours: '8',   summary: 'Shadowed client meetings and documented minutes.' },
+   
   ]
 
   return (

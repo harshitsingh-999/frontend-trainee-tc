@@ -88,18 +88,74 @@ function SuperAdmin() {
   }, []);
 
   /* ── FETCH ALL USERS ── */
+  const normalizeUsersPayload = (payload) => {
+    if (Array.isArray(payload)) return payload;
+    if (Array.isArray(payload?.data)) return payload.data;
+    if (Array.isArray(payload?.users)) return payload.users;
+    if (Array.isArray(payload?.data?.users)) return payload.data.users;
+    if (Array.isArray(payload?.data?.data)) return payload.data.data;
+    return [];
+  };
+
+  const normalizeUser = (u) => ({
+    ...u,
+    role_id: Number(u?.role_id),
+    is_active: u?.is_active ?? u?.isActive ?? u?.active
+  });
+
+  const normalizeRoleName = (val) =>
+    (val || "")
+      .toString()
+      .toLowerCase()
+      .replace(/[\s_-]/g, "");
+
+  const getRoleKey = (u) => {
+    const roleName = normalizeRoleName(u?.role_name || u?.role || u?.roleName);
+    if (roleName.includes("superadmin")) return "superadmin";
+    if (roleName.includes("admin")) return "admin";
+    if (roleName.includes("manager")) return "manager";
+    if (roleName.includes("buddy") || roleName.includes("trainee")) return "buddy";
+    if (roleName.includes("intern")) return "intern";
+
+    const roleId = Number(u?.role_id);
+    if (roleId === ROLE.SUPERADMIN) return "superadmin";
+    if (roleId === ROLE.ADMIN) return "admin";
+    if (roleId === ROLE.MANAGER) return "manager";
+    if (roleId === ROLE.BUDDY) return "buddy";
+    if (roleId === ROLE.INTERN) return "intern";
+    return "other";
+  };
+
   const fetchAllUsers = useCallback(async () => {
     setLoading(true); setApiError("");
     try {
-      const res = await axiosClient.get("/admin/users", { params: { page:1, limit:200 } });
+      const res = await axiosClient.get("/admin/users", {
+        params: { page: 1, limit: 200, _ts: Date.now() }
+      });
       const payload = res?.data || {};
-      const data =
-        (Array.isArray(payload.data)       && payload.data)       ||
-        (Array.isArray(payload.users)      && payload.users)      ||
-        (Array.isArray(payload.data?.users)&& payload.data.users) ||
-        [];
+      const data = normalizeUsersPayload(payload).map(normalizeUser);
       setAllUsers(data);
     } catch (err) {
+      const status = err?.response?.status;
+      if (status === 401 || status === 403 || status === 404) {
+        try {
+          const res = await axiosClient.get("/users", {
+            params: { page: 1, limit: 200, _ts: Date.now() }
+          });
+          const payload = res?.data || {};
+          const data = normalizeUsersPayload(payload).map(normalizeUser);
+          setAllUsers(data);
+          setApiError("");
+          return;
+        } catch (fallbackErr) {
+          setApiError(
+            fallbackErr.response?.data?.message ||
+            err.response?.data?.message ||
+            "Failed to load users"
+          );
+          return;
+        }
+      }
       setApiError(err.response?.data?.message || "Failed to load users");
     } finally {
       setLoading(false);
@@ -114,9 +170,12 @@ function SuperAdmin() {
   };
 
   /* ── FILTERED LISTS ── */
-  const admins   = allUsers.filter(u => u.role_id === ROLE.ADMIN);
-  const managers = allUsers.filter(u => u.role_id === ROLE.MANAGER);
-  const interns  = allUsers.filter(u => u.role_id === ROLE.INTERN || u.role_id === ROLE.BUDDY);
+  const admins   = allUsers.filter(u => getRoleKey(u) === "admin");
+  const managers = allUsers.filter(u => getRoleKey(u) === "manager");
+  const interns  = allUsers.filter(u => {
+    const key = getRoleKey(u);
+    return key === "intern" || key === "buddy";
+  });
 
   const DEPTS = ["IT","HR","Sales","Ops","Finance"];
 
@@ -439,7 +498,11 @@ function SuperAdmin() {
               </td>
               <td>{u.email}</td>
               <td>{u.department || u.dept || <span className="sa-muted">—</span>}</td>
-              <td><span className="sa-dept-pill">{u.role_id===3?"Buddy":"Intern"}</span></td>
+              <td>
+                <span className="sa-dept-pill">
+                  {getRoleKey(u) === "buddy" ? "Buddy" : "Intern"}
+                </span>
+              </td>
               <td><Badge text={u.is_active ? 1 : 0} /></td>
               <td className="sa-action-cell">
                 <button className="sa-btn-sm" onClick={() => openEdit("Intern", u)}><FaEdit /></button>
@@ -470,11 +533,15 @@ function SuperAdmin() {
           // Try multiple possible endpoints
           let data = [];
           try {
-            const r = await axiosClient.get("/admin/tasks", { params: { limit: 200 } });
+            const r = await axiosClient.get("/admin/tasks", {
+              params: { limit: 200, _ts: Date.now() }
+            });
             const p = r?.data || {};
             data = Array.isArray(p.data) ? p.data : Array.isArray(p.tasks) ? p.tasks : Array.isArray(p) ? p : [];
           } catch {
-            const r = await axiosClient.get("/tasks", { params: { limit: 200 } });
+            const r = await axiosClient.get("/tasks", {
+              params: { limit: 200, _ts: Date.now() }
+            });
             const p = r?.data || {};
             data = Array.isArray(p.data) ? p.data : Array.isArray(p.tasks) ? p.tasks : Array.isArray(p) ? p : [];
           }
