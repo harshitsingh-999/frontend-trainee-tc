@@ -1,25 +1,28 @@
 import React, { useEffect, useState } from 'react'
 import { NavLink, Outlet, useNavigate } from 'react-router-dom'
 import { FaBars, FaTachometerAlt, FaUsers, FaUserPlus, FaGraduationCap } from 'react-icons/fa'
+import { useAuth } from '../../context/authcontext.jsx'
 import '../../style.css'
 
 function AdminLayout() {
   const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  // const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const { user, logout } = useAuth()
 
   useEffect(() => {
     document.body.classList.add('authenticated')
     return () => document.body.classList.remove('authenticated')
   }, [])
 
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('user')
-    window.location.href = '/login'
-  }
+  // const handleLogout = () => {
+  //   localStorage.removeItem('token')
+  //   localStorage.removeItem('authToken')
+  //   localStorage.removeItem('user')
+  //   window.location.href = '/login'
+  // }
+  const handleLogout = async () => { await logout(); navigate('/login') }
 
   return (
     <div className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>

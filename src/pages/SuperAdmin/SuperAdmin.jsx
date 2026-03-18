@@ -1,3 +1,5 @@
+
+
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -8,6 +10,7 @@ import {
 } from "react-icons/fa";
 import axiosClient from "../../api/axiosClient";
 import "./superadmin.css";
+import { useAuth } from '../../context/authcontext.jsx'
 
 /* ── Role IDs ── */
 // 1=Admin, 2=Manager, 3=Buddy, 4=Intern, 5=SuperAdmin
@@ -79,7 +82,8 @@ function SuperAdmin() {
   const [editTarget, setEditTarget] = useState(null);
   const [saving,     setSaving]     = useState(false);
 
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
+  // const user = JSON.parse(localStorage.getItem("user") || "{}");
+  const { user, logout } = useAuth()
 
   useEffect(() => {
     const h = e => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false); };
@@ -164,9 +168,9 @@ function SuperAdmin() {
 
   useEffect(() => { fetchAllUsers(); }, [fetchAllUsers]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token"); localStorage.removeItem("authToken"); localStorage.removeItem("user");
-    navigate("/login");
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
   };
 
   /* ── FILTERED LISTS ── */

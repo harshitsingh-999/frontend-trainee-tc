@@ -1,27 +1,21 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
+
 import Login from './pages/Login.jsx'
 import UserForm from './pages/UserForm.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 import Users from './pages/AdminUser.jsx'
-import Layout from './components/Layout.jsx'
-import { AdminRoute, SuperAdminRoute } from './Contexts/AuthContext.jsx'
+import ManagerPage from './pages/manager.jsx'
+import InternTasks from './pages/interntask.jsx'
+import Attendance from './pages/attendence.jsx'
+import MyLeaves from './pages/myleaves.jsx'
+import LayoutManager from './components/Layout_manager.jsx'
+import { useAuth, AdminRoute, SuperAdminRoute } from './context/authcontext.jsx'
 import AdminLayout from './pages/Admin/Layout.jsx'
 import SuperAdmin from './pages/SuperAdmin/SuperAdmin.jsx'
 import AdminDashboard from './pages/Admin/Dashboard.jsx'
 import UsersList from './pages/Admin/UsersList.jsx'
 import CreateUser from './pages/Admin/CreateUser.jsx'
-
-const ROLE_MAP = {
-  0: 'SuperAdmin',
-  1: 'Admin',
-  2: 'Manager',
-  3: 'Buddy',
-  4: 'Intern',
-  5: 'SuperAdmin',
-  6: 'SuperAdmin',
-  7: 'SuperAdmin',
-}
 
 const SUPERADMIN_EMAILS = [
   'superadmin@company.com',
@@ -54,70 +48,77 @@ const getRedirectPath = (user) => {
   return '/dashboard'
 }
 
-function App() {
-  const [user, setUser] = useState(() => {
-    const stored = localStorage.getItem('user')
-    return stored ? JSON.parse(stored) : null
-  })
+// Uses the real AuthContext — works for Manager, Intern, Buddy roles
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div style={{ padding: 30 }}>Loading...</div>
+  if (!user) return <Navigate to="/login" replace />
+  return <LayoutManager>{children}</LayoutManager>
+}
 
+function App() {
+  // Read user from real AuthContext for redirect logic
+  const { user, login: ctxLogin, logout: ctxLogout, loading } = useAuth()
+
+  // Login handler: call AuthContext login so all consumers stay in sync
   const handleLogin = (apiUser) => {
     if (!apiUser) return
     const email = (apiUser.email || '').toLowerCase()
-    const roleFromApi =
-      typeof apiUser.role === 'string'
-        ? apiUser.role
-        : apiUser.role?.role_name || ''
     const roleIdRaw =
       apiUser.role_id !== undefined && apiUser.role_id !== null
         ? Number(apiUser.role_id)
         : apiUser.role?.id !== undefined
         ? Number(apiUser.role.id)
-        : apiUser.role?.role_id !== undefined
-        ? Number(apiUser.role.role_id)
         : undefined
     const roleId = Number.isNaN(roleIdRaw) ? undefined : roleIdRaw
     const isSuperByEmail = SUPERADMIN_EMAILS.includes(email)
     const finalRoleId = isSuperByEmail ? 0 : roleId
-    const role = ROLE_MAP[finalRoleId] || roleFromApi || 'User'
+    const ROLE_MAP = { 0:'SuperAdmin',1:'Admin',2:'Manager',3:'Buddy',4:'Intern',5:'SuperAdmin',6:'SuperAdmin',7:'SuperAdmin' }
+    const role = ROLE_MAP[finalRoleId] || apiUser.role_name || 'User'
     const u = { id: apiUser.id, name: apiUser.name || 'Team Member', email, role, role_id: finalRoleId }
-    localStorage.setItem('user', JSON.stringify(u))
-    setUser(u)
+    ctxLogin(u)
     return u
   }
 
-  const handleLogout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('user')
-    setUser(null)
-  }
-
-  const ProtectedRoute = ({ children }) =>
-    user ? (
-      <Layout user={user} onLogout={handleLogout}>
-        {children}
-      </Layout>
-    ) : (
-      <Navigate to="/login" replace />
-    )
+  if (loading) return <div style={{ padding: 30 }}>Loading...</div>
 
   return (
     <Routes>
+      {/* Public */}
       <Route path="/login" element={
-        <Login onLogin={handleLogin} isAuthenticated={!!user} getRedirectPath={getRedirectPath} />
+        <Login
+          onLogin={handleLogin}
+          isAuthenticated={!!user}
+          currentUser={user}
+          getRedirectPath={getRedirectPath}
+        />
       } />
+
+      {/* Root redirect */}
       <Route path="/" element={<Navigate to={user ? getRedirectPath(user) : '/login'} replace />} />
-      <Route path="/dashboard" element={<ProtectedRoute><Dashboard user={user} /></ProtectedRoute>} />
-      <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
-      <Route path="/user-form" element={<ProtectedRoute><UserForm /></ProtectedRoute>} />
+
+      {/* Manager / Intern / Buddy routes — all use Layout_manager */}
+      <Route path="/dashboard"  element={<ProtectedRoute><Dashboard user={user} /></ProtectedRoute>} />
+      <Route path="/manager"    element={<ProtectedRoute><ManagerPage /></ProtectedRoute>} />
+      <Route path="/my-tasks"   element={<ProtectedRoute><InternTasks /></ProtectedRoute>} />
+      <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
+      <Route path="/my-leaves"  element={<ProtectedRoute><MyLeaves /></ProtectedRoute>} />
+      <Route path="/user-form"  element={<ProtectedRoute><UserForm /></ProtectedRoute>} />
+      <Route path="/users"      element={<ProtectedRoute><Users /></ProtectedRoute>} />
+
+      {/* Admin routes */}
       <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<AdminDashboard />} />
         <Route path="users" element={<UsersList />} />
         <Route path="create-user" element={<CreateUser />} />
       </Route>
-      <Route path="/superadmin" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
+
+      {/* SuperAdmin routes */}
+      <Route path="/superadmin"   element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
       <Route path="/superadmin/*" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
+
+      {/* Fallback */}
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   )

@@ -2,16 +2,14 @@ import React, { useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import api from '../api/api'
 
-function Login({ onLogin, isAuthenticated, getRedirectPath }) {
+function Login({ onLogin, isAuthenticated, currentUser, getRedirectPath }) {
   const navigate = useNavigate()
   const [formValues, setFormValues] = useState({ email: '', password: '' })
   const [errorMsg, setErrorMsg] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (isAuthenticated) {
-    const storedUser = localStorage.getItem('user')
-    const parsedUser = storedUser ? JSON.parse(storedUser) : null
-    return <Navigate to={getRedirectPath(parsedUser)} replace />
+    return <Navigate to={getRedirectPath(currentUser)} replace />
   }
 
   const handleChange = (event) => {

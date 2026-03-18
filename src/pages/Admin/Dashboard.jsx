@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useUser } from '../../context/UserContext'
+import { useAuth } from '../../context/authcontext.jsx'
 
 function daysRemaining() {
   const today = new Date()
@@ -14,7 +15,8 @@ function AdminDashboard() {
   const { users, fetchUsers, loading, error } = useUser()
   const [stats, setStats] = useState([])
 
-  const user = JSON.parse(localStorage.getItem('user') || '{}')
+  // const user = JSON.parse(localStorage.getItem('user') || '{}')
+  const { user } = useAuth()
   const remainingDays = daysRemaining()
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
