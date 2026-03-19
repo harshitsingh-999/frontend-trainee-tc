@@ -45,10 +45,10 @@ function AdminDashboard() {
           <h2>Good day, {user.name || 'Admin'}</h2>
           <p>Role: <span className="pill pill-soft">{user.role || 'Admin'}</span></p>
         </div>
-        <div className="summary-badge">
+        {/* <div className="summary-badge">
           <span>Internship Time Remaining</span>
           <strong>{remainingDays} days</strong>
-        </div>
+        </div> */}
       </div>
 
       <div className="dashboard-grid">
@@ -106,7 +106,7 @@ function AdminDashboard() {
         </section>
 
         {/* Internship Timeline */}
-        <section className="card">
+        {/* <section className="card">
           <div className="card-header">
             <div>
               <h3>Internship Timeline</h3>
@@ -125,7 +125,7 @@ function AdminDashboard() {
               <strong>{remainingDays} days</strong> remaining.
             </p>
           </div>
-        </section>
+        </section> */}
 
         {/* Admin Actions */}
         <section className="card">

@@ -1145,3 +1145,126 @@ body.authenticated .app-shell {
   display: flex;
   flex-direction: column;
 }
+/* ═══════════════════════════════════════════════
+   RESPONSIVE ADDITIONS
+═══════════════════════════════════════════════ */
+
+/* Tablet */
+@media (max-width: 1024px) {
+  .create-user-grid,
+  [style*="gridTemplateColumns: '1fr 300px'"],
+  [style*="grid-template-columns: 1fr 300px"] {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Mobile ≤ 640px */
+@media (max-width: 640px) {
+  /* Tables scroll horizontally instead of overflowing */
+  .table-wrapper, [style*="overflowX"] {
+    overflow-x: auto !important;
+  }
+
+  /* Stack header buttons vertically */
+  .users-header-actions {
+    flex-direction: column;
+    width: 100%;
+  }
+  .users-header-actions a,
+  .users-header-actions button {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Shrink modal padding */
+  [style*="padding:24"] {
+    padding: 16px !important;
+  }
+
+  /* Login card full width on tiny screens */
+  .login-card {
+    padding: 20px 16px 18px !important;
+    border-radius: 16px !important;
+  }
+
+  /* Role cards in create user — 1 col on very small screens */
+  .role-cards {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Manager dashboard tabs wrap */
+  [style*="borderBottom: '2px solid #e5e7eb'"] {
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   FORM VALIDATION STYLES
+═══════════════════════════════════════════════ */
+
+/* Invalid field highlight */
+input:invalid:not(:placeholder-shown),
+select:invalid:not(:placeholder-shown) {
+  border-color: #ef4444 !important;
+}
+
+/* Valid field */
+input:valid:not(:placeholder-shown):not([type="password"]) {
+  border-color: #10b981 !important;
+}
+
+/* Validation message helper text */
+.field-hint {
+  font-size: 11px;
+  color: #9ca3af;
+  margin-top: 4px;
+}
+
+.field-error {
+  font-size: 11px;
+  color: #dc2626;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.field-success {
+  font-size: 11px;
+  color: #059669;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Input focus ring — consistent across all inputs */
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #00b1b4 !important;
+  box-shadow: 0 0 0 3px rgba(0, 177, 180, 0.12) !important;
+}
+
+/* Disabled state */
+.form-group input:disabled,
+.form-group select:disabled {
+  background: #f5f7fb;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Password strength colours */
+.strength-weak   { color: #dc2626; }
+.strength-medium { color: #d97706; }
+.strength-strong { color: #059669; }
+
+
+* { box-sizing: border-box; }
+
+img { max-width: 100%; height: auto; }
+
+@media (max-width: 768px) {
+  .flex { flex-direction: column; }
+  .grid { grid-template-columns: 1fr !important; }
+  .sidebar { display: none; }
+  .main-content { margin-left: 0 !important; padding: 10px; }
+  table { display: block; overflow-x: auto; }
+}

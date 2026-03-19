@@ -16,6 +16,7 @@ import SuperAdmin from './pages/SuperAdmin/SuperAdmin.jsx'
 import AdminDashboard from './pages/Admin/Dashboard.jsx'
 import UsersList from './pages/Admin/UsersList.jsx'
 import CreateUser from './pages/Admin/CreateUser.jsx'
+import ProjectProgress from './pages/ProjectProgress.jsx'
 
 const SUPERADMIN_EMAILS = [
   'superadmin@company.com',
@@ -105,6 +106,8 @@ function App() {
       <Route path="/my-leaves"  element={<ProtectedRoute><MyLeaves /></ProtectedRoute>} />
       <Route path="/user-form"  element={<ProtectedRoute><UserForm /></ProtectedRoute>} />
       <Route path="/users"      element={<ProtectedRoute><Users /></ProtectedRoute>} />
+      <Route path="/project-progress" element={<ProtectedRoute><ProjectProgress /></ProtectedRoute>} />
+      
 
       {/* Admin routes */}
       <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>

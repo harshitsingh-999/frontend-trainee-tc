@@ -348,16 +348,287 @@ function InternDetailModal({ trainee, onClose }) {
   )
 }
 
+// ─── Project Create Card ──────────────────────────────────
+function ProjectCreateCard({ projects, onCreated }) {
+  const [showForm, setShowForm] = useState(false)
+  const [form, setForm] = useState({
+    project_name: '', description: '', start_date: '', end_date: '',
+    status: 'active', priority: 'medium',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
+
+  const handleSubmit = async (e) => {
+    e.preventDefault()
+    setSaving(true); setError(''); setSuccess('')
+    try {
+      await api.post('/manager/projects', form)
+      setSuccess('Project created successfully!')
+      setForm({ project_name: '', description: '', start_date: '', end_date: '', status: 'active', priority: 'medium' })
+      setShowForm(false)
+      onCreated()
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to create project')
+    } finally { setSaving(false) }
+  }
+
+  return (
+    <section className="card">
+      <div className="card-header">
+        <div>
+          <h3>Projects</h3>
+          <p>Projects are used to group tasks. Each task must belong to a project.</p>
+        </div>
+        <button className="btn-primary btn-small" onClick={() => { setShowForm(s => !s); setError(''); setSuccess('') }}>
+          {showForm ? 'Cancel' : '+ New Project'}
+        </button>
+      </div>
+
+      {success && (
+        <div style={{ padding: '10px 14px', borderRadius: 8, marginBottom: 12, fontWeight: 600, fontSize: 13, background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0' }}>
+          ✓ {success}
+        </div>
+      )}
+
+      {showForm && (
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: 16, padding: 16, background: '#f8fafc', borderRadius: 10, border: '1px solid #e2e8f0' }}>
+          <div className="form-group">
+            <label>Project Name *</label>
+            <input value={form.project_name} onChange={e => setForm(p => ({ ...p, project_name: e.target.value }))} required placeholder="e.g. Customer Portal" />
+          </div>
+          <div className="form-group">
+            <label>Description</label>
+            <input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Brief description" />
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+            <div className="form-group">
+              <label>Start Date *</label>
+              <input type="date" value={form.start_date} onChange={e => setForm(p => ({ ...p, start_date: e.target.value }))} required />
+            </div>
+            <div className="form-group">
+              <label>End Date</label>
+              <input type="date" value={form.end_date} onChange={e => setForm(p => ({ ...p, end_date: e.target.value }))} />
+            </div>
+            <div className="form-group">
+              <label>Status</label>
+              <select value={form.status} onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
+                <option value="planning">Planning</option>
+                <option value="active">Active</option>
+                <option value="completed">Completed</option>
+                <option value="on_hold">On Hold</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label>Priority</label>
+              <select value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value }))}>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+          </div>
+          {error && <p className="error-text">{error}</p>}
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Creating…' : 'Create Project'}</button>
+            <button type="button" className="btn-secondary" onClick={() => setShowForm(false)}>Cancel</button>
+          </div>
+        </form>
+      )}
+
+      {projects.length === 0 ? (
+        <p style={{ color: '#9ca3af', fontSize: 13 }}>No projects yet. Create one to start assigning tasks.</p>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {projects.map(p => (
+            <div key={p.id} style={{
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 8,
+              padding: '10px 14px', borderRadius: 8, border: '1px solid #e5e7eb', background: '#fff',
+            }}>
+              <div>
+                <span style={{ fontWeight: 700, color: '#003b5c' }}>#{p.id} — {p.project_name}</span>
+                {p.description && <span style={{ fontSize: 12, color: '#9ca3af', marginLeft: 8 }}>{p.description}</span>}
+              </div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <span style={{
+                  padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                  textTransform: 'capitalize',
+                  background: p.status === 'active' ? '#eff6ff' : p.status === 'completed' ? '#f0fdf4' : '#f1f5f9',
+                  color: p.status === 'active' ? '#2563eb' : p.status === 'completed' ? '#16a34a' : '#475569',
+                }}>{p.status?.replace('_', ' ')}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  )
+}
+
 // ─── Main Manager Component ────────────────────────────────
+// ─── All Interns Tab Component ────────────────────────────────────────────────
+function AllInternsTab({ allInterns, myId, onAssigned }) {
+  const [assigning, setAssigning] = useState(null)
+  const [msg,       setMsg]       = useState('')
+  const [msgType,   setMsgType]   = useState('ok')
+  const [search,    setSearch]    = useState('')
+
+  const filtered = allInterns.filter(t =>
+    !search ||
+    t.user?.name?.toLowerCase().includes(search.toLowerCase()) ||
+    t.user?.email?.toLowerCase().includes(search.toLowerCase()) ||
+    (t.course || '').toLowerCase().includes(search.toLowerCase())
+  )
+
+  const handleAssign = async (trainee) => {
+    setAssigning(trainee.id)
+    setMsg('')
+    try {
+      await api.put(`/manager/interns/${trainee.id}/assign-manager`, {})
+      setMsg(`✓ You are now the manager for ${trainee.user?.name}!`)
+      setMsgType('ok')
+      onAssigned()
+    } catch (err) {
+      setMsg(err.response?.data?.message || 'Failed to assign manager')
+      setMsgType('err')
+    } finally {
+      setAssigning(null)
+    }
+  }
+
+  const getManagerLabel = (trainee) => {
+    if (!trainee.manager_id)          return { text: 'Unassigned',            color: '#dc2626', bg: '#fef2f2' }
+    if (trainee.manager_id === myId)  return { text: 'You',                   color: '#16a34a', bg: '#f0fdf4' }
+    return                                   { text: `Manager #${trainee.manager_id}`, color: '#2563eb', bg: '#eff6ff' }
+  }
+
+  return (
+    <section className="card">
+      <div className="card-header">
+        <div>
+          <h3>All Interns in the System</h3>
+          <p>View every intern. Click <strong>+ Assign Me</strong> on unassigned interns to take them under your supervision.</p>
+        </div>
+      </div>
+
+      {msg && (
+        <div style={{
+          padding: '10px 16px', borderRadius: 8, marginBottom: 16,
+          fontWeight: 600, fontSize: 13,
+          background: msgType === 'ok' ? '#f0fdf4' : '#fef2f2',
+          color:      msgType === 'ok' ? '#16a34a' : '#dc2626',
+          border: `1px solid ${msgType === 'ok' ? '#bbf7d0' : '#fecaca'}`,
+        }}>
+          {msg}
+        </div>
+      )}
+
+      <input
+        type="text" placeholder="Search by name, email or course…"
+        value={search} onChange={e => setSearch(e.target.value)}
+        style={{ width: '100%', padding: '9px 14px', borderRadius: 9, marginBottom: 16,
+          border: '1.5px solid #dde3f0', fontSize: 13, fontFamily: 'inherit',
+          outline: 'none', boxSizing: 'border-box' }}
+      />
+
+      {/* Counters */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        {[
+          { label: 'Total',      value: allInterns.length,                                                    color: '#003b5c' },
+          { label: 'Unassigned', value: allInterns.filter(t => !t.manager_id).length,                        color: '#dc2626' },
+          { label: 'Mine',       value: allInterns.filter(t => t.manager_id === myId).length,                color: '#16a34a' },
+          { label: 'Others',     value: allInterns.filter(t => t.manager_id && t.manager_id !== myId).length, color: '#2563eb' },
+        ].map(s => (
+          <div key={s.label} style={{ background: '#f8fafc', borderRadius: 8, padding: '8px 18px',
+            border: '1px solid #e2e8f0', textAlign: 'center', minWidth: 80 }}>
+            <div style={{ fontSize: 11, color: '#9ca3af' }}>{s.label}</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.value}</div>
+          </div>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px 0', color: '#9ca3af' }}>No interns found.</div>
+      ) : (
+        <div className="table-wrapper">
+          <table className="table">
+            <thead>
+              <tr>
+                <th>Name</th><th>Email</th><th>Course</th><th>Status</th><th>Manager</th><th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filtered.map(trainee => {
+                const ml       = getManagerLabel(trainee)
+                const isMe     = trainee.manager_id === myId
+                const hasOther = trainee.manager_id && !isMe
+                return (
+                  <tr key={trainee.id}>
+                    <td><strong>{trainee.user?.name || '—'}</strong></td>
+                    <td style={{ fontSize: 12, color: '#6b7280' }}>{trainee.user?.email || '—'}</td>
+                    <td>{trainee.course || '—'}</td>
+                    <td>
+                      <span style={{ padding: '2px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                        textTransform: 'capitalize',
+                        background: trainee.current_status === 'active' ? '#f0fdf4' : '#f1f5f9',
+                        color:      trainee.current_status === 'active' ? '#16a34a' : '#475569' }}>
+                        {trainee.current_status}
+                      </span>
+                    </td>
+                    <td>
+                      <span style={{ padding: '3px 10px', borderRadius: 6, fontSize: 12,
+                        fontWeight: 600, background: ml.bg, color: ml.color }}>
+                        {ml.text}
+                      </span>
+                    </td>
+                    <td>
+                      {isMe ? (
+                        <span style={{ padding: '5px 12px', borderRadius: 7, fontSize: 12,
+                          background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#16a34a', fontWeight: 600 }}>
+                          ✓ Your Intern
+                        </span>
+                      ) : hasOther ? (
+                        <span style={{ padding: '5px 12px', borderRadius: 7, fontSize: 12,
+                          background: '#f1f5f9', color: '#9ca3af', fontWeight: 500 }}>
+                          Already assigned
+                        </span>
+                      ) : (
+                        <button
+                          onClick={() => handleAssign(trainee)}
+                          disabled={assigning === trainee.id}
+                          style={{ padding: '5px 14px', borderRadius: 7, border: 'none',
+                            background: assigning === trainee.id ? '#e5e7eb' : '#003b5c',
+                            color: assigning === trainee.id ? '#9ca3af' : '#fff',
+                            fontWeight: 700, fontSize: 12,
+                            cursor: assigning === trainee.id ? 'default' : 'pointer' }}>
+                          {assigning === trainee.id ? 'Assigning…' : '+ Assign Me'}
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
+}
+
 export default function Manager() {
   const { user } = useAuth()
 
   // data
-  const [interns,      setInterns]      = useState([])
-  const [tasks,        setTasks]        = useState([])
-  const [pendingLeaves, setPendingLeaves] = useState([])
-  const [loading,      setLoading]      = useState(true)
-  const [error,        setError]        = useState('')
+  const [interns,        setInterns]        = useState([])
+  const [allInterns,     setAllInterns]     = useState([])
+  const [tasks,          setTasks]          = useState([])
+  const [pendingLeaves,  setPendingLeaves]  = useState([])
+  const [projects,       setProjects]       = useState([])
+  const [projectProgress, setProjectProgress] = useState([])
+  const [loading,        setLoading]        = useState(true)
+  const [error,          setError]          = useState('')
 
   // tabs
   const [tab, setTab] = useState('overview')
@@ -399,14 +670,20 @@ export default function Manager() {
   const fetchAll = useCallback(async () => {
     setLoading(true)
     setError('')
-    const [internsRes, tasksRes, leavesRes] = await Promise.all([
+    const [internsRes, allInternsRes, tasksRes, leavesRes, projectsRes, progressRes] = await Promise.all([
       api.get('/manager/interns').catch(() => null),
+      api.get('/manager/all-interns').catch(() => null),
       api.get('/manager/tasks').catch(() => null),
       api.get('/manager/leave-requests').catch(() => null),
+      api.get('/manager/projects').catch(() => null),
+      api.get('/manager/project-progress').catch(() => null),
     ])
-    if (internsRes) setInterns(internsRes.data.data || [])
-    if (tasksRes)   setTasks(tasksRes.data.data || [])
-    if (leavesRes)  setPendingLeaves(leavesRes.data.data || [])
+    if (internsRes)    setInterns(internsRes.data.data || [])
+    if (allInternsRes) setAllInterns(allInternsRes.data.data || [])
+    if (tasksRes)      setTasks(tasksRes.data.data || [])
+    if (leavesRes)     setPendingLeaves(leavesRes.data.data || [])
+    if (projectsRes)   setProjects(projectsRes.data.data || [])
+    if (progressRes)   setProjectProgress(progressRes.data.data || [])
     setLoading(false)
   }, [])
 
@@ -510,10 +787,12 @@ export default function Manager() {
   const overdueCount   = tasks.filter(t => new Date(t.due_date) < new Date() && t.status !== 'completed').length
 
   const TABS = [
-    { key: 'overview', label: ' Overview' },
-    { key: 'interns',  label: ` Interns (${interns.length})` },
-    { key: 'tasks',    label: ` Tasks (${tasks.length})` },
-    { key: 'leaves',   label: ` Leaves${pendingLeaves.length ? ` (${pendingLeaves.length} pending)` : ''}` },
+    { key: 'overview',          label: '📊 Overview' },
+    { key: 'interns',           label: `👥 My Interns (${interns.length})` },
+    { key: 'all-interns',       label: `🔍 All Interns (${allInterns.length})` },
+    { key: 'tasks',             label: `📋 Tasks (${tasks.length})` },
+    { key: 'project-progress',  label: '📈 Project Progress' },
+    { key: 'leaves',            label: `🌴 Leaves${pendingLeaves.length ? ` (${pendingLeaves.length} pending)` : ''}` },
   ]
 
   return (
@@ -522,7 +801,7 @@ export default function Manager() {
       {/* ── Header ── */}
       <div className="dashboard-header">
         <div>
-          <h2>Manager Dashboard</h2>
+          <h2>Intern Dashboard</h2>
           <p>Manage your interns, assign tasks, and approve leaves.</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
@@ -736,12 +1015,25 @@ export default function Manager() {
       )}
 
       {/* ══════════════════════════════════════════════════════
+          ALL INTERNS TAB
+      ══════════════════════════════════════════════════════ */}
+      {tab === 'all-interns' && (
+        <AllInternsTab allInterns={allInterns} myId={user?.id} onAssigned={fetchAll} />
+      )}
+
+      {/* ══════════════════════════════════════════════════════
           TASKS TAB
       ══════════════════════════════════════════════════════ */}
       {tab === 'tasks' && (
         <section className="card">
           <div className="card-header">
-            <div><h3>Tasks Assigned by You</h3><p>Create, edit or delete tasks for your interns.</p></div>
+            <div>
+              <h3>Tasks Assigned by You</h3>
+              <p>Create, edit or delete tasks for your interns. Tasks are grouped by <strong>Project</strong>.</p>
+            </div>
+            <button className="btn-secondary btn-small" onClick={() => setTab('project-progress')}>
+              📁 Manage Projects
+            </button>
           </div>
           {tasks.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 0', color: '#9ca3af' }}>
@@ -792,8 +1084,150 @@ export default function Manager() {
       )}
 
       {/* ══════════════════════════════════════════════════════
-          LEAVES TAB
+          PROJECT PROGRESS TAB
       ══════════════════════════════════════════════════════ */}
+      {tab === 'project-progress' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          {/* Create Project form */}
+          <ProjectCreateCard projects={projects} onCreated={fetchAll} />
+
+          {/* Progress cards */}
+          {projectProgress.length === 0 ? (
+            <section className="card">
+              <div style={{ textAlign: 'center', padding: '50px 0', color: '#9ca3af' }}>
+                <div style={{ fontSize: 40, marginBottom: 10 }}>📂</div>
+                <p>No projects yet. Create a project above to start tracking intern progress.</p>
+              </div>
+            </section>
+          ) : (
+            projectProgress.map(({ project, interns: internList }) => (
+              <section key={project.id} className="card">
+                {/* Project header */}
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                  flexWrap: 'wrap', gap: 10, marginBottom: 16,
+                  paddingBottom: 14, borderBottom: '1px solid #e5e7eb'
+                }}>
+                  <div>
+                    <h3 style={{ margin: 0, color: '#003b5c', fontSize: 17 }}>{project.project_name}</h3>
+                    {project.description && (
+                      <p style={{ margin: '4px 0 0', fontSize: 13, color: '#6b7280' }}>{project.description}</p>
+                    )}
+                    <div style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}>
+                      <span style={{
+                        padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+                        background: project.status === 'active' ? '#eff6ff' : project.status === 'completed' ? '#f0fdf4' : '#fffbeb',
+                        color: project.status === 'active' ? '#2563eb' : project.status === 'completed' ? '#16a34a' : '#d97706',
+                        textTransform: 'capitalize',
+                      }}>{project.status?.replace('_', ' ')}</span>
+                      <span style={{
+                        padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                        background: '#f1f5f9', color: '#475569', textTransform: 'capitalize',
+                      }}>Priority: {project.priority}</span>
+                      {project.start_date && (
+                        <span style={{ fontSize: 11, color: '#9ca3af', padding: '2px 6px' }}>
+                          {formatDate(project.start_date)} → {project.end_date ? formatDate(project.end_date) : 'Ongoing'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{
+                    background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10,
+                    padding: '8px 16px', textAlign: 'center', minWidth: 80,
+                  }}>
+                    <div style={{ fontSize: 11, color: '#9ca3af' }}>Interns</div>
+                    <div style={{ fontSize: 22, fontWeight: 800, color: '#003b5c' }}>{internList.length}</div>
+                  </div>
+                </div>
+
+                {internList.length === 0 ? (
+                  <p style={{ color: '#9ca3af', fontSize: 13, padding: '8px 0' }}>
+                    No tasks assigned under this project yet.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                    {internList.map(internData => {
+                      const pct = internData.avgCompletion
+                      const completionColor = pct >= 80 ? '#16a34a' : pct >= 40 ? '#00b1b4' : '#d97706'
+                      return (
+                        <div key={internData.user?.id} style={{
+                          border: '1px solid #e5e7eb', borderRadius: 10, padding: '14px 18px',
+                          background: '#fafafa',
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10, marginBottom: 10 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                              <div style={{
+                                width: 36, height: 36, borderRadius: '50%',
+                                background: 'linear-gradient(135deg, #003b5c, #00b1b4)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                color: '#fff', fontWeight: 700, fontSize: 15, flexShrink: 0,
+                              }}>
+                                {(internData.user?.name || '?')[0].toUpperCase()}
+                              </div>
+                              <div>
+                                <div style={{ fontWeight: 700, color: '#003b5c', fontSize: 14 }}>
+                                  {internData.user?.name || `User #${internData.user?.id}`}
+                                </div>
+                                <div style={{ fontSize: 11, color: '#9ca3af' }}>{internData.user?.email}</div>
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                              {[
+                                { label: 'Tasks',       value: internData.totalTasks,     color: '#003b5c' },
+                                { label: 'Done',        value: internData.completedTasks, color: '#16a34a' },
+                                { label: 'In Progress', value: internData.inProgressTasks, color: '#2563eb' },
+                                { label: 'Review',      value: internData.reviewTasks,    color: '#7c3aed' },
+                              ].map(s => (
+                                <div key={s.label} style={{
+                                  background: '#fff', border: '1px solid #e2e8f0',
+                                  borderRadius: 8, padding: '5px 12px', textAlign: 'center', minWidth: 55,
+                                }}>
+                                  <div style={{ fontSize: 10, color: '#9ca3af' }}>{s.label}</div>
+                                  <div style={{ fontSize: 16, fontWeight: 800, color: s.color }}>{s.value}</div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Progress bar */}
+                          <div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                              <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>
+                                Overall Progress
+                              </span>
+                              <span style={{ fontSize: 12, fontWeight: 800, color: completionColor }}>
+                                {pct}%
+                              </span>
+                            </div>
+                            <div style={{ height: 8, background: '#e5e7eb', borderRadius: 99, overflow: 'hidden' }}>
+                              <div style={{
+                                height: '100%', borderRadius: 99, width: `${pct}%`,
+                                background: pct >= 80
+                                  ? 'linear-gradient(90deg,#16a34a,#22c55e)'
+                                  : pct >= 40
+                                  ? 'linear-gradient(90deg,#003b5c,#00b1b4)'
+                                  : 'linear-gradient(90deg,#d97706,#fbbf24)',
+                                transition: 'width 0.5s ease',
+                              }} />
+                            </div>
+                            {internData.totalTasks > 0 && (
+                              <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
+                                {internData.completedTasks} of {internData.totalTasks} tasks completed
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </section>
+            ))
+          )}
+        </div>
+      )}
+    
       {tab === 'leaves' && (
         <div>
           {/* Sub-tab switcher */}
@@ -991,7 +1425,20 @@ export default function Manager() {
                     {interns.map(t => <option key={t.id} value={t.user_id}>{t.user?.name || `User #${t.user_id}`}</option>)}
                   </select>
                 </div>
-                <div className="form-group"><label>Project ID *</label><input name="project_id" type="number" value={taskForm.project_id} onChange={handleTaskChange} required placeholder="e.g. 1" /></div>
+                <div className="form-group">
+                  <label>Project (Task Group) *</label>
+                  <select name="project_id" value={taskForm.project_id} onChange={handleTaskChange} required>
+                    <option value="">-- Select project --</option>
+                    {projects.map(p => (
+                      <option key={p.id} value={p.id}>{p.project_name}</option>
+                    ))}
+                  </select>
+                  {projects.length === 0 && (
+                    <p style={{ fontSize: 12, color: '#d97706', marginTop: 4 }}>
+                      ⚠ No projects yet. Create one below the task list first.
+                    </p>
+                  )}
+                </div>
               </div>
               <div className="grid-2">
                 <div className="form-group"><label>Start Date</label><input name="start_date" type="date" value={taskForm.start_date} onChange={handleTaskChange} /></div>

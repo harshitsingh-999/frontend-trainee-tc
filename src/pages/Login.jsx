@@ -55,14 +55,32 @@ function Login({ onLogin, isAuthenticated, currentUser, getRedirectPath }) {
         </div>
         <h2 className="login-title">Welcome back</h2>
         <p className="login-description">Sign in to manage interns, buddies, and training progress.</p>
-        <form className="login-form" onSubmit={handleSubmit}>
+        <form className="login-form" onSubmit={handleSubmit} autoComplete="off">
           <div className="form-group">
             <label htmlFor="email">Official Email</label>
-            <input id="email" name="email" type="email" placeholder="name@teamcomputers.com" value={formValues.email} onChange={handleChange} required />
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="Enter your email"
+              value={formValues.email}
+              onChange={handleChange}
+              required
+              autoComplete="new-password"
+            />
           </div>
           <div className="form-group">
             <label htmlFor="password">Password</label>
-            <input id="password" name="password" type="password" value={formValues.password} onChange={handleChange} required />
+            <input
+              id="password"
+              name="password"
+              type="password"
+              placeholder="Enter your password"
+              value={formValues.password}
+              onChange={handleChange}
+              required
+              autoComplete="new-password"
+            />
           </div>
           {errorMsg && <p className="error-text">{errorMsg}</p>}
           <button type="submit" className="btn-primary" disabled={isSubmitting}>
