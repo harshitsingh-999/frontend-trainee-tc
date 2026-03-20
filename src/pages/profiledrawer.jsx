@@ -1,17 +1,20 @@
 import React, { useState, useEffect, useRef } from 'react'
 import api from '../api/login_api.js'
 import { useAuth } from '../context/authcontext.jsx'
+import AvatarEditor from 'react-avatar-editor'
 
 const ROLE_LABELS = { 1: 'Admin', 2: 'Manager', 3: 'Buddy', 4: 'Intern' }
+const API_BASE = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/api\/v1\/?$/, '') : 'http://localhost:7357';
+const getAvatarUrl = (url) => url ? `${API_BASE}${url}` : null;
 
 // ── STATUS BADGE ──────────────────────────────────────────
 function StatusBadge({ status }) {
   const map = {
-    active:            { bg: '#f0fdf4', text: '#16a34a', label: 'Active' },
-    pending_approval:  { bg: '#fffbeb', text: '#d97706', label: 'Pending Approval' },
-    completed:         { bg: '#eff6ff', text: '#2563eb', label: 'Completed' },
-    on_leave:          { bg: '#faf5ff', text: '#7c3aed', label: 'On Leave' },
-    terminated:        { bg: '#fef2f2', text: '#dc2626', label: 'Terminated' },
+    active: { bg: '#f0fdf4', text: '#16a34a', label: 'Active' },
+    pending_approval: { bg: '#fffbeb', text: '#d97706', label: 'Pending Approval' },
+    completed: { bg: '#eff6ff', text: '#2563eb', label: 'Completed' },
+    on_leave: { bg: '#faf5ff', text: '#7c3aed', label: 'On Leave' },
+    terminated: { bg: '#fef2f2', text: '#dc2626', label: 'Terminated' },
   }
   const s = map[status] || { bg: '#f1f5f9', text: '#475569', label: status || 'Unknown' }
   return (
@@ -28,8 +31,10 @@ function StatusBadge({ status }) {
 function Field({ label, value, placeholder = '—' }) {
   return (
     <div style={{ marginBottom: 14 }}>
-      <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600,
-        textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>
+      <div style={{
+        fontSize: 11, color: '#9ca3af', fontWeight: 600,
+        textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3
+      }}>
         {label}
       </div>
       <div style={{ fontSize: 14, color: value ? '#111827' : '#d1d5db', fontWeight: value ? 500 : 400 }}>
@@ -41,16 +46,16 @@ function Field({ label, value, placeholder = '—' }) {
 
 // ── MAIN DRAWER ───────────────────────────────────────────
 export default function ProfileDrawer({ open, onClose }) {
-  const { user } = useAuth()
+  const { user, updateUser } = useAuth()
   const drawerRef = useRef()
 
-  const [profile,  setProfile]  = useState(null)   // { user, trainee }
-  const [loading,  setLoading]  = useState(false)
-  const [editing,  setEditing]  = useState(false)
-  const [saving,   setSaving]   = useState(false)
-  const [success,  setSuccess]  = useState('')
-  const [error,    setError]    = useState('')
-  const [isNew,    setIsNew]    = useState(false)   // true if no trainee record yet
+  const [profile, setProfile] = useState(null)   // { user, trainee }
+  const [loading, setLoading] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [success, setSuccess] = useState('')
+  const [error, setError] = useState('')
+  const [isNew, setIsNew] = useState(false)   // true if no trainee record yet
 
   const [form, setForm] = useState({
     phone: '', address: '',
@@ -58,6 +63,49 @@ export default function ProfileDrawer({ open, onClose }) {
     enrollment_date: '', expected_end_date: '',
     gpa: '', certifications: '',
   })
+
+  const [uploadingPic, setUploadingPic] = useState(false)
+  const [selectedImage, setSelectedImage] = useState(null)
+  const [cropScale, setCropScale] = useState(1.2)
+  const cropperRef = useRef(null)
+
+  const handleAvatarUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setSelectedImage(file);
+    e.target.value = null; // reset input
+  }
+
+  const handleSaveCrop = async () => {
+    if (cropperRef.current) {
+      const canvas = cropperRef.current.getImageScaledToCanvas();
+      canvas.toBlob(async (blob) => {
+        if (!blob) return;
+        setUploadingPic(true);
+        setError('');
+        setSuccess('');
+        const formData = new FormData();
+        formData.append('image', blob, 'profile.png');
+        try {
+          const res = await api.post('/users/upload-profile', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' }
+          });
+          if (res.data.success) {
+            setSuccess('Profile picture updated!');
+            setProfile(prev => prev ? { ...prev, user: { ...prev.user, profile_picture: res.data.profile_url } } : prev);
+            if (updateUser && user) {
+              updateUser({ ...user, profile_picture: res.data.profile_url });
+            }
+            setSelectedImage(null);
+          }
+        } catch (err) {
+          setError(err.response?.data?.message || 'Failed to upload picture');
+        } finally {
+          setUploadingPic(false);
+        }
+      });
+    }
+  }
 
   // Fetch profile when drawer opens
   useEffect(() => {
@@ -76,15 +124,15 @@ export default function ProfileDrawer({ open, onClose }) {
           setIsNew(isNewUser)
           // Pre-fill form with existing data
           setForm({
-            phone:             data.user.phone         || '',
-            address:           data.user.address       || '',
-            college_name:      data.trainee?.college_name      || '',
-            course:            data.trainee?.course            || '',
-            batch_year:        data.trainee?.batch_year        || '',
-            enrollment_date:   data.trainee?.enrollment_date   || '',
+            phone: data.user.phone || '',
+            address: data.user.address || '',
+            college_name: data.trainee?.college_name || '',
+            course: data.trainee?.course || '',
+            batch_year: data.trainee?.batch_year || '',
+            enrollment_date: data.trainee?.enrollment_date || '',
             expected_end_date: data.trainee?.expected_end_date || '',
-            gpa:               data.trainee?.gpa               || '',
-            certifications:    data.trainee?.certifications    || '',
+            gpa: data.trainee?.gpa || '',
+            certifications: data.trainee?.certifications || '',
           })
           // Auto-open edit mode for new users who haven't filled profile yet
           if (isNewUser) setEditing(true)
@@ -134,15 +182,15 @@ export default function ProfileDrawer({ open, onClose }) {
     // Reset form to current saved data
     if (profile) {
       setForm({
-        phone:             profile.user.phone              || '',
-        address:           profile.user.address            || '',
-        college_name:      profile.trainee?.college_name   || '',
-        course:            profile.trainee?.course         || '',
-        batch_year:        profile.trainee?.batch_year     || '',
-        enrollment_date:   profile.trainee?.enrollment_date  || '',
+        phone: profile.user.phone || '',
+        address: profile.user.address || '',
+        college_name: profile.trainee?.college_name || '',
+        course: profile.trainee?.course || '',
+        batch_year: profile.trainee?.batch_year || '',
+        enrollment_date: profile.trainee?.enrollment_date || '',
         expected_end_date: profile.trainee?.expected_end_date || '',
-        gpa:               profile.trainee?.gpa            || '',
-        certifications:    profile.trainee?.certifications || '',
+        gpa: profile.trainee?.gpa || '',
+        certifications: profile.trainee?.certifications || '',
       })
     }
   }
@@ -179,13 +227,52 @@ export default function ProfileDrawer({ open, onClose }) {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{
-              width: 48, height: 48, borderRadius: 12,
-              background: 'rgba(255,255,255,0.2)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 22, fontWeight: 700, color: '#fff',
-            }}>
-              {user?.name?.charAt(0)?.toUpperCase() || '?'}
+            <div
+              style={{ position: 'relative', cursor: uploadingPic ? 'wait' : 'pointer' }}
+              onClick={() => !uploadingPic && document.getElementById('avatar-upload').click()}
+              title="Click to update profile picture"
+            >
+              <div style={{
+                width: 48, height: 48, borderRadius: 12,
+                background: 'rgba(255,255,255,0.2)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 22, fontWeight: 700, color: '#fff',
+                overflow: 'hidden', border: '2px solid rgba(255,255,255,0.5)',
+                flexShrink: 0
+              }}>
+                {(profile?.user?.profile_picture || user?.profile_picture) ? (
+                  <img
+                    src={getAvatarUrl(profile?.user?.profile_picture || user?.profile_picture)}
+                    alt="avatar"
+                    width={48}
+                    height={48}
+                    style={{ objectFit: 'cover', display: 'block', opacity: uploadingPic ? 0.5 : 1 }}
+                    onError={e => { e.currentTarget.style.display = 'none'; e.currentTarget.nextSibling.style.display = 'flex'; }}
+                  />
+                ) : null}
+                <span style={{
+                  display: (profile?.user?.profile_picture || user?.profile_picture) ? 'none' : 'flex',
+                  width: 48, height: 48, alignItems: 'center', justifyContent: 'center',
+                  fontSize: 22, fontWeight: 700, color: '#fff'
+                }}>
+                  {user?.name?.charAt(0)?.toUpperCase() || '?'}
+                </span>
+              </div>
+              <div style={{
+                position: 'absolute', bottom: -5, right: -5,
+                background: '#00b1b4', borderRadius: '50%', width: 22, height: 22,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2)', color: '#fff', fontSize: 12
+              }}>
+                📷
+              </div>
+              <input
+                id="avatar-upload"
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={handleAvatarUpload}
+              />
             </div>
             <div>
               <div style={{ color: '#fff', fontWeight: 700, fontSize: 16 }}>{user?.name}</div>
@@ -229,16 +316,20 @@ export default function ProfileDrawer({ open, onClose }) {
           )}
 
           {success && (
-            <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0',
+            <div style={{
+              background: '#f0fdf4', border: '1px solid #bbf7d0',
               borderRadius: 8, padding: '10px 14px', color: '#16a34a',
-              fontWeight: 600, marginBottom: 16, fontSize: 13 }}>
+              fontWeight: 600, marginBottom: 16, fontSize: 13
+            }}>
               ✓ {success}
             </div>
           )}
           {error && (
-            <div style={{ background: '#fef2f2', border: '1px solid #fecaca',
+            <div style={{
+              background: '#fef2f2', border: '1px solid #fecaca',
               borderRadius: 8, padding: '10px 14px', color: '#dc2626',
-              fontWeight: 600, marginBottom: 16, fontSize: 13 }}>
+              fontWeight: 600, marginBottom: 16, fontSize: 13
+            }}>
               ✗ {error}
             </div>
           )}
@@ -257,8 +348,10 @@ export default function ProfileDrawer({ open, onClose }) {
 
               {/* Contact */}
               <div style={{ marginBottom: 18 }}>
-                <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 700,
-                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                <div style={{
+                  fontSize: 11, color: '#9ca3af', fontWeight: 700,
+                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10
+                }}>
                   Contact
                 </div>
                 <div className="form-group" style={{ marginBottom: 10 }}>
@@ -275,8 +368,10 @@ export default function ProfileDrawer({ open, onClose }) {
 
               {/* Academic */}
               <div style={{ marginBottom: 18 }}>
-                <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 700,
-                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                <div style={{
+                  fontSize: 11, color: '#9ca3af', fontWeight: 700,
+                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10
+                }}>
                   Academic
                 </div>
                 <div className="form-group" style={{ marginBottom: 10 }}>
@@ -300,8 +395,10 @@ export default function ProfileDrawer({ open, onClose }) {
 
               {/* Internship dates */}
               <div style={{ marginBottom: 18 }}>
-                <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 700,
-                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                <div style={{
+                  fontSize: 11, color: '#9ca3af', fontWeight: 700,
+                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10
+                }}>
                   Internship Dates
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
@@ -320,8 +417,10 @@ export default function ProfileDrawer({ open, onClose }) {
 
               {/* Extra */}
               <div style={{ marginBottom: 18 }}>
-                <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 700,
-                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>
+                <div style={{
+                  fontSize: 11, color: '#9ca3af', fontWeight: 700,
+                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10
+                }}>
                   Additional Info
                 </div>
                 <div style={{ display: 'flex', gap: 10 }}>
@@ -336,9 +435,11 @@ export default function ProfileDrawer({ open, onClose }) {
                   <textarea name="certifications" value={form.certifications}
                     onChange={handleChange}
                     placeholder="AWS Cloud Practitioner, React, Python…"
-                    style={{ width: '100%', borderRadius: 8, border: '1px solid #dde3f0',
+                    style={{
+                      width: '100%', borderRadius: 8, border: '1px solid #dde3f0',
                       padding: '8px 10px', fontFamily: 'inherit', fontSize: 13,
-                      resize: 'vertical', minHeight: 70, boxSizing: 'border-box' }} />
+                      resize: 'vertical', minHeight: 70, boxSizing: 'border-box'
+                    }} />
                 </div>
               </div>
             </div>
@@ -349,17 +450,21 @@ export default function ProfileDrawer({ open, onClose }) {
             <div>
               {/* Account info */}
               <div style={{ marginBottom: 20 }}>
-                <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 700,
-                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+                <div style={{
+                  fontSize: 11, color: '#9ca3af', fontWeight: 700,
+                  textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12
+                }}>
                   Account
                 </div>
-                <Field label="Email"  value={user?.email} />
-                <Field label="Phone"  value={profile?.user?.phone} />
+                <Field label="Email" value={user?.email} />
+                <Field label="Phone" value={profile?.user?.phone} />
                 <Field label="Address" value={profile?.user?.address} />
                 {profile?.trainee && (
                   <div style={{ marginBottom: 14 }}>
-                    <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 600,
-                      textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3 }}>
+                    <div style={{
+                      fontSize: 11, color: '#9ca3af', fontWeight: 600,
+                      textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 3
+                    }}>
                       Status
                     </div>
                     <StatusBadge status={profile.trainee.current_status} />
@@ -370,26 +475,30 @@ export default function ProfileDrawer({ open, onClose }) {
               {/* Academic */}
               {isIntern && (
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 700,
-                    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+                  <div style={{
+                    fontSize: 11, color: '#9ca3af', fontWeight: 700,
+                    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12
+                  }}>
                     Academic
                   </div>
-                  <Field label="College"    value={profile?.trainee?.college_name} />
-                  <Field label="Course"     value={profile?.trainee?.course} />
+                  <Field label="College" value={profile?.trainee?.college_name} />
+                  <Field label="Course" value={profile?.trainee?.course} />
                   <Field label="Batch Year" value={profile?.trainee?.batch_year} />
-                  <Field label="GPA"        value={profile?.trainee?.gpa} />
+                  <Field label="GPA" value={profile?.trainee?.gpa} />
                 </div>
               )}
 
               {/* Internship */}
               {isIntern && profile?.trainee && (
                 <div style={{ marginBottom: 20 }}>
-                  <div style={{ fontSize: 11, color: '#9ca3af', fontWeight: 700,
-                    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12 }}>
+                  <div style={{
+                    fontSize: 11, color: '#9ca3af', fontWeight: 700,
+                    textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 12
+                  }}>
                     Internship
                   </div>
-                  <Field label="Start Date"  value={profile.trainee.enrollment_date} />
-                  <Field label="End Date"    value={profile.trainee.expected_end_date} />
+                  <Field label="Start Date" value={profile.trainee.enrollment_date} />
+                  <Field label="End Date" value={profile.trainee.expected_end_date} />
                   <Field label="Certifications / Skills" value={profile.trainee.certifications} />
                 </div>
               )}
@@ -445,6 +554,73 @@ export default function ProfileDrawer({ open, onClose }) {
           </div>
         )}
       </div>
+
+      {/* Cropper Modal */}
+      {selectedImage && (
+        <div style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)',
+          zIndex: 1300, display: 'flex', alignItems: 'center', justifyContent: 'center'
+        }}>
+          <div style={{
+            background: '#fff', borderRadius: 12, padding: 24, width: 350,
+            display: 'flex', flexDirection: 'column', alignItems: 'center', boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
+          }}>
+            <h3 style={{ margin: '0 0 16px', color: '#003b5c' }}>Crop Profile Picture</h3>
+
+            <div style={{ borderRadius: 8, overflow: 'hidden', background: '#f8fafc', marginBottom: 16 }}>
+              <AvatarEditor
+                ref={cropperRef}
+                image={selectedImage}
+                width={200}
+                height={200}
+                border={20}
+                borderRadius={100}
+                color={[255, 255, 255, 0.6]} // RGBA
+                scale={cropScale}
+                rotate={0}
+              />
+            </div>
+
+            <div style={{ width: '100%', marginBottom: 20 }}>
+              <label style={{ fontSize: 13, color: '#64748b', display: 'block', marginBottom: 8, fontWeight: 500 }}>
+                Zoom: {Math.round(cropScale * 100)}%
+              </label>
+              <input
+                type="range"
+                value={cropScale}
+                min="1"
+                max="3"
+                step="0.1"
+                onChange={(e) => setCropScale(parseFloat(e.target.value))}
+                style={{ width: '100%' }}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, width: '100%', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setSelectedImage(null)}
+                style={{
+                  padding: '8px 16px', borderRadius: 8, border: '1px solid #cbd5e1',
+                  background: '#fff', color: '#475569', fontWeight: 600, cursor: 'pointer'
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveCrop}
+                disabled={uploadingPic}
+                style={{
+                  padding: '8px 16px', borderRadius: 8, border: 'none',
+                  background: '#00b1b4', color: '#fff', fontWeight: 600, cursor: uploadingPic ? 'wait' : 'pointer',
+                  opacity: uploadingPic ? 0.7 : 1
+                }}
+              >
+                {uploadingPic ? 'Saving...' : 'Save & Upload'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   )
 }

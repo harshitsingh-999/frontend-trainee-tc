@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
+import toast from "react-hot-toast";
 import axiosClient from "../api/axiosClient.js";
 
 const AuthContext = createContext(null);
@@ -15,6 +16,7 @@ const normalizeUser = (apiUser) => ({
   email: apiUser.email,
   role_id: apiUser.role_id,
   role: apiUser.role_name || apiUser.role || "User",
+  profile_picture: apiUser.profile_picture || null,
 });
 
 const persistUser = (nextUser) => {
@@ -64,6 +66,7 @@ export function AuthProvider({ children }) {
     const normalizedUser = normalizeUser(apiUser);
     setUser(normalizedUser);
     persistUser(normalizedUser);
+    toast.success(`Welcome back, ${normalizedUser.name}!`);
   };
 
   const logout = async () => {
@@ -75,10 +78,16 @@ export function AuthProvider({ children }) {
 
     setUser(null);
     clearPersistedUser();
+    toast.success("Logged out successfully");
+  };
+
+  const updateUser = (updatedUser) => {
+    setUser(updatedUser);
+    persistUser(updatedUser);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={{ user, login, logout, loading, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

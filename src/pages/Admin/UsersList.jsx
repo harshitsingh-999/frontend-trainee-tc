@@ -101,10 +101,12 @@ const UsersList = () => {
     } finally { setTogglingUserId(null); }
   };
 
-  const filteredUsers = users.filter(u => {
+  const visibleUsers = users.filter(u => [2, 4].includes(Number(u.role_id)));
+
+  const filteredUsers = visibleUsers.filter(u => {
     const q = search.toLowerCase();
     return (u.name?.toLowerCase().includes(q) || u.email?.toLowerCase().includes(q))
-      && (filterRole === 'all' || u.role_id === parseInt(filterRole));
+      && (filterRole === 'all' || Number(u.role_id) === parseInt(filterRole));
   });
 
   if (loading) return (
@@ -155,9 +157,7 @@ const UsersList = () => {
         <select value={filterRole} onChange={e => setFilterRole(e.target.value)}
           style={{ padding:'8px 12px', border:'1.5px solid #dde3f0', borderRadius:10, fontSize:13, background:'#fff', fontFamily:'inherit', cursor:'pointer' }}>
           <option value="all">All Roles</option>
-          <option value="1">Admin</option>
           <option value="2">Manager</option>
-          <option value="3">Trainee</option>
           <option value="4">Intern</option>
         </select>
         <button onClick={() => { setSearch(''); setFilterRole('all'); fetchUsers(); }}
@@ -166,7 +166,7 @@ const UsersList = () => {
         </button>
       </div>
 
-      <div style={{ fontSize:12, color:'#9ca3af' }}>Showing {filteredUsers.length} of {users.length} users</div>
+      <div style={{ fontSize:12, color:'#9ca3af' }}>Showing {filteredUsers.length} of {visibleUsers.length} users</div>
 
       {/* ── mobile cards / desktop table ── */}
       {filteredUsers.length === 0 ? (

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import toast from 'react-hot-toast'
 import api from '../api/login_api.js'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
@@ -12,15 +13,15 @@ const formatDate = (d) => {
 const today = () => new Date().toISOString().split('T')[0]
 
 const LEAVE_TYPES = [
-  { value: 'casual',    label: ' Casual',    desc: '2 days/year',  color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
-  { value: 'sick',      label: ' Sick',       desc: '2 days/year',   color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
-  { value: 'emergency', label: ' Emergency',  desc: '2 days/year',   color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
-  { value: 'personal',  label: ' Personal',   desc: '2 days/year',  color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff' },
+  { value: 'casual', label: ' Casual', desc: '2 days/year', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
+  { value: 'sick', label: ' Sick', desc: '2 days/year', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+  { value: 'emergency', label: ' Emergency', desc: '2 days/year', color: '#dc2626', bg: '#fef2f2', border: '#fecaca' },
+  { value: 'personal', label: ' Personal', desc: '2 days/year', color: '#7c3aed', bg: '#faf5ff', border: '#e9d5ff' },
 ]
 
 const STATUS_INFO = {
-  pending_leave:  { label: '⏳ Pending',  bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
-  on_leave:       { label: '✓ Approved', bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
+  pending_leave: { label: '⏳ Pending', bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
+  on_leave: { label: '✓ Approved', bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
   leave_rejected: { label: '✕ Rejected', bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },
 }
 
@@ -28,9 +29,9 @@ const TYPE_MAP = Object.fromEntries(LEAVE_TYPES.map(t => [t.value, t]))
 
 // ─── Leave Balance Card ────────────────────────────────────────────────────────
 function BalanceCard({ type, data }) {
-  const info  = TYPE_MAP[type]
-  const pct   = data.total > 0 ? Math.round(((data.used + data.pending) / data.total) * 100) : 0
-  const warn  = data.available <= 1
+  const info = TYPE_MAP[type]
+  const pct = data.total > 0 ? Math.round(((data.used + data.pending) / data.total) * 100) : 0
+  const warn = data.available <= 1
 
   return (
     <div style={{
@@ -39,14 +40,18 @@ function BalanceCard({ type, data }) {
       display: 'flex', flexDirection: 'column', gap: 10, position: 'relative',
     }}>
       {warn && data.available === 0 && (
-        <span style={{ position: 'absolute', top: 10, right: 12, fontSize: 11,
-          background: '#fecaca', color: '#dc2626', borderRadius: 6, padding: '2px 8px', fontWeight: 700 }}>
+        <span style={{
+          position: 'absolute', top: 10, right: 12, fontSize: 11,
+          background: '#fecaca', color: '#dc2626', borderRadius: 6, padding: '2px 8px', fontWeight: 700
+        }}>
           EXHAUSTED
         </span>
       )}
       {warn && data.available === 1 && (
-        <span style={{ position: 'absolute', top: 10, right: 12, fontSize: 11,
-          background: '#fde68a', color: '#d97706', borderRadius: 6, padding: '2px 8px', fontWeight: 700 }}>
+        <span style={{
+          position: 'absolute', top: 10, right: 12, fontSize: 11,
+          background: '#fde68a', color: '#d97706', borderRadius: 6, padding: '2px 8px', fontWeight: 700
+        }}>
           1 LEFT
         </span>
       )}
@@ -72,55 +77,29 @@ function BalanceCard({ type, data }) {
   )
 }
 
-// ─── Notification Toast ────────────────────────────────────────────────────────
-function Toast({ msg, type, onClose }) {
-  useEffect(() => {
-    const t = setTimeout(onClose, 4000)
-    return () => clearTimeout(t)
-  }, [onClose])
 
-  const isErr = type === 'error'
-  return (
-    <div style={{
-      position: 'fixed', top: 24, right: 24, zIndex: 9999,
-      background: isErr ? '#fef2f2' : '#f0fdf4',
-      border: `1px solid ${isErr ? '#fecaca' : '#bbf7d0'}`,
-      color: isErr ? '#dc2626' : '#16a34a',
-      borderRadius: 12, padding: '14px 20px 14px 16px',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.12)',
-      fontWeight: 600, fontSize: 14, maxWidth: 360,
-      display: 'flex', alignItems: 'flex-start', gap: 10,
-      animation: 'slideIn 0.2s ease',
-    }}>
-      <span style={{ fontSize: 18 }}>{isErr ? '✗' : '✓'}</span>
-      <span style={{ flex: 1 }}>{msg}</span>
-      <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer',
-        color: 'inherit', fontSize: 16, padding: 0, marginLeft: 4, opacity: 0.6 }}>✕</button>
-    </div>
-  )
-}
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function MyLeaves() {
-  const [tab,         setTab]         = useState('apply')
-  const [leaves,      setLeaves]      = useState([])
-  const [balance,     setBalance]     = useState(null)
-  const [loading,     setLoading]     = useState(true)
-  const [busy,        setBusy]        = useState(false)
-  const [cancelId,    setCancelId]    = useState(null)
-  const [toast,       setToast]       = useState(null)   // { msg, type }
+  const [tab, setTab] = useState('apply')
+  const [leaves, setLeaves] = useState([])
+  const [balance, setBalance] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [busy, setBusy] = useState(false)
+  const [cancelId, setCancelId] = useState(null)
   const [notifications, setNotifications] = useState([]) // newly changed statuses
 
   // form state
-  const [leaveDate,   setLeaveDate]   = useState('')
-  const [leaveType,   setLeaveType]   = useState('casual')
+  const [leaveDate, setLeaveDate] = useState('')
+  const [leaveType, setLeaveType] = useState('casual')
   const [leaveReason, setLeaveReason] = useState('')
 
   // track previous statuses for change-detection notifications
   const prevLeavesRef = React.useRef({})
 
   const notify = useCallback((msg, type = 'success') => {
-    setToast({ msg, type })
+    if (type === 'error') toast.error(msg);
+    else toast.success(msg);
   }, [])
 
   const fetchAll = useCallback(async () => {
@@ -137,7 +116,7 @@ export default function MyLeaves() {
       newLeaves.forEach(l => {
         if (prev[l.id] && prev[l.id] !== l.status) {
           const from = prev[l.id]
-          const to   = l.status
+          const to = l.status
           if (to === 'on_leave') {
             changed.push({ id: l.id, msg: `✅ Your leave on ${formatDate(l.attendance_date)} was APPROVED!`, type: 'success' })
           } else if (to === 'leave_rejected') {
@@ -208,7 +187,6 @@ export default function MyLeaves() {
 
   return (
     <div className="dashboard">
-      {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
       {/* ── header ── */}
       <div className="dashboard-header">
@@ -237,8 +215,10 @@ export default function MyLeaves() {
             <span style={{ fontWeight: 700, fontSize: 13, color: '#374151' }}>
               🔔 Recent Notifications
             </span>
-            <button onClick={() => setNotifications([])} style={{ fontSize: 12, color: '#9ca3af',
-              background: 'none', border: 'none', cursor: 'pointer' }}>
+            <button onClick={() => setNotifications([])} style={{
+              fontSize: 12, color: '#9ca3af',
+              background: 'none', border: 'none', cursor: 'pointer'
+            }}>
               Clear all
             </button>
           </div>
@@ -261,7 +241,7 @@ export default function MyLeaves() {
       {/* ── tabs ── */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e5e7eb' }}>
         {[
-          { key: 'apply',    label: ' Apply for Leave' },
+          { key: 'apply', label: ' Apply for Leave' },
           { key: 'requests', label: ` My Requests${pendingCount ? ` (${pendingCount} pending)` : ''}` },
         ].map(t => (
           <button key={t.key} onClick={() => setTab(t.key)} style={{
@@ -346,8 +326,10 @@ export default function MyLeaves() {
 
           {/* Info banner for sick/emergency */}
           {(leaveType === 'sick' || leaveType === 'emergency') && (
-            <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8,
-              padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#92400e' }}>
+            <div style={{
+              background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 8,
+              padding: '10px 14px', marginBottom: 16, fontSize: 13, color: '#92400e'
+            }}>
               💡 {leaveType === 'sick' ? 'Sick leave: You may be asked to provide a medical certificate.' : 'Emergency leave: Please inform your manager as soon as possible.'}
             </div>
           )}
@@ -390,8 +372,8 @@ export default function MyLeaves() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {leaves.map(leave => {
-                const si   = STATUS_INFO[leave.status] || STATUS_INFO.pending_leave
-                const ti   = TYPE_MAP[leave.leave_type] || TYPE_MAP.casual
+                const si = STATUS_INFO[leave.status] || STATUS_INFO.pending_leave
+                const ti = TYPE_MAP[leave.leave_type] || TYPE_MAP.casual
                 const isPending = leave.status === 'pending_leave'
 
                 return (

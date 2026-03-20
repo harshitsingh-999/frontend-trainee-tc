@@ -1,22 +1,23 @@
 import React, { useState, useEffect, useRef } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import api from '../api/login_api.js'
 
 // const [evaluations, setEvaluations] = useState([]);
 
 const PRIORITY_COLORS = {
-  low:      { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0' },
-  medium:   { bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
-  high:     { bg: '#fff7ed', text: '#ea580c', border: '#fed7aa' },
+  low: { bg: '#f0fdf4', text: '#16a34a', border: '#bbf7d0' },
+  medium: { bg: '#fffbeb', text: '#d97706', border: '#fde68a' },
+  high: { bg: '#fff7ed', text: '#ea580c', border: '#fed7aa' },
   critical: { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
 }
 
 const STATUS_COLORS = {
-  todo:        { bg: '#f1f5f9', text: '#475569' },
+  todo: { bg: '#f1f5f9', text: '#475569' },
   in_progress: { bg: '#eff6ff', text: '#2563eb' },
-  review:      { bg: '#faf5ff', text: '#7c3aed' },
-  completed:   { bg: '#f0fdf4', text: '#16a34a' },
-  blocked:     { bg: '#fef2f2', text: '#dc2626' },
-  rejected:    { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
+  review: { bg: '#faf5ff', text: '#7c3aed' },
+  completed: { bg: '#f0fdf4', text: '#16a34a' },
+  blocked: { bg: '#fef2f2', text: '#dc2626' },
+  rejected: { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
 }
 
 function Badge({ value, map }) {
@@ -37,21 +38,21 @@ function Badge({ value, map }) {
 // ── FILE → BASE64 helper ──────────────────────────────────
 const fileToBase64 = (file) => new Promise((resolve, reject) => {
   const reader = new FileReader()
-  reader.onload  = () => resolve(reader.result) // includes data:...;base64, prefix
+  reader.onload = () => resolve(reader.result) // includes data:...;base64, prefix
   reader.onerror = reject
   reader.readAsDataURL(file)
 })
 
 // ── SUBMIT MODAL ──────────────────────────────────────────
 function SubmitModal({ task, onClose, onSubmit }) {
-  const [workNotes,   setWorkNotes]   = useState('')
-  const [status,      setStatus]      = useState('review')
-  const [completion,  setCompletion]  = useState(task.completion_percentage || 0)
-  const [file,        setFile]        = useState(null)
-  const [submitting,  setSubmitting]  = useState(false)
-  const [error,       setError]       = useState('')
-  
-//   const [evaluations, setEvaluations] = useState([])
+  const [workNotes, setWorkNotes] = useState('')
+  const [status, setStatus] = useState('review')
+  const [completion, setCompletion] = useState(task.completion_percentage || 0)
+  const [file, setFile] = useState(null)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState('')
+
+  //   const [evaluations, setEvaluations] = useState([])
   const fileRef = useRef()
 
   const handleFile = (e) => {
@@ -78,7 +79,7 @@ function SubmitModal({ task, onClose, onSubmit }) {
     try {
       // Build payload — matches your backend exactly
       const payload = {
-        work_notes:            workNotes.trim(),
+        work_notes: workNotes.trim(),
         status,
         completion_percentage: Number(completion),
       }
@@ -158,8 +159,10 @@ function SubmitModal({ task, onClose, onSubmit }) {
 
           {/* Work notes — the notepad */}
           <div style={{ marginBottom: 18 }}>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: 14,
-              color: '#374151', marginBottom: 8 }}>
+            <label style={{
+              display: 'block', fontWeight: 600, fontSize: 14,
+              color: '#374151', marginBottom: 8
+            }}>
               📝 Work Notes <span style={{ color: '#dc2626' }}>*</span>
             </label>
             <textarea
@@ -201,8 +204,10 @@ function SubmitModal({ task, onClose, onSubmit }) {
 
           {/* File upload */}
           <div style={{ marginBottom: 18 }}>
-            <label style={{ display: 'block', fontWeight: 600, fontSize: 14,
-              color: '#374151', marginBottom: 8 }}>
+            <label style={{
+              display: 'block', fontWeight: 600, fontSize: 14,
+              color: '#374151', marginBottom: 8
+            }}>
               📎 Attach File <span style={{ fontWeight: 400, color: '#9ca3af' }}>(optional, max 10MB)</span>
             </label>
 
@@ -254,8 +259,10 @@ function SubmitModal({ task, onClose, onSubmit }) {
 
           {/* Error */}
           {error && (
-            <p style={{ color: '#dc2626', background: '#fef2f2', padding: '10px 14px',
-              borderRadius: 8, marginTop: 12, fontWeight: 600 }}>✗ {error}</p>
+            <p style={{
+              color: '#dc2626', background: '#fef2f2', padding: '10px 14px',
+              borderRadius: 8, marginTop: 12, fontWeight: 600
+            }}>✗ {error}</p>
           )}
         </div>
 
@@ -285,23 +292,24 @@ function SubmitModal({ task, onClose, onSubmit }) {
 
 // ── MAIN PAGE ─────────────────────────────────────────────
 export default function InternTasks() {
-  const [tasks,      setTasks]      = useState([])
-  const [loading,    setLoading]    = useState(true)
-  const [error,      setError]      = useState('')
-  const [updating,   setUpdating]   = useState(null)
+  const [tasks, setTasks] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [updating, setUpdating] = useState(null)
   const [updateForm, setUpdateForm] = useState({})
   const [successMsg, setSuccessMsg] = useState('')
   const [submitTask, setSubmitTask] = useState(null)
   const [evaluations, setEvaluations] = useState([])
-  const [trainee,    setTrainee]    = useState(null)
-  const [activeTab,  setActiveTab]  = useState('tasks')
+  const [trainee, setTrainee] = useState(null)
+  const [searchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'tasks')
 
- useEffect(() => {
-  fetchTasks()
-  api.get('/intern/evaluations').then(r => setEvaluations(r.data.data || [])).catch(() => {})
-  api.get('/intern/profile').then(r => setTrainee(r.data.data?.trainee || null)).catch(() => {})
-}, [])
-//   api.get('/intern/evaluations').then(r => setEvaluations(r.data.data || [])).catch(() => {})
+  useEffect(() => {
+    fetchTasks()
+    api.get('/intern/evaluations').then(r => setEvaluations(r.data.data || [])).catch(() => { })
+    api.get('/intern/profile').then(r => setTrainee(r.data.data?.trainee || null)).catch(() => { })
+  }, [])
+  //   api.get('/intern/evaluations').then(r => setEvaluations(r.data.data || [])).catch(() => {})
 
 
   const fetchTasks = async () => {
@@ -333,8 +341,8 @@ export default function InternTasks() {
     try {
       // Use submit endpoint with minimal payload
       await api.post(`/intern/tasks/${taskId}/submit`, {
-        work_notes:            'Progress update',
-        status:                updateForm.status,
+        work_notes: 'Progress update',
+        status: updateForm.status,
         completion_percentage: Number(updateForm.completion_percentage),
       })
       setSuccessMsg('Progress updated!')
@@ -345,10 +353,10 @@ export default function InternTasks() {
     }
   }
 
-  const total      = tasks.length
-  const completed  = tasks.filter(t => t.status === 'completed').length
+  const total = tasks.length
+  const completed = tasks.filter(t => t.status === 'completed').length
   const inProgress = tasks.filter(t => t.status === 'in_progress').length
-  const overdue    = tasks.filter(t => new Date(t.due_date) < new Date() && t.status !== 'completed').length
+  const overdue = tasks.filter(t => new Date(t.due_date) < new Date() && t.status !== 'completed').length
 
   if (loading) return <div style={{ padding: 40, color: '#6b7280' }}>Loading your tasks…</div>
 
@@ -360,8 +368,8 @@ export default function InternTasks() {
   const timelineData = () => {
     if (!trainee?.enrollment_date) return null
     const start = new Date(trainee.enrollment_date)
-    const end   = trainee.expected_end_date ? new Date(trainee.expected_end_date) : null
-    const now   = new Date()
+    const end = trainee.expected_end_date ? new Date(trainee.expected_end_date) : null
+    const now = new Date()
     let pct = 0, daysLeft = null, totalDays = null
     if (end) {
       totalDays = Math.round((end - start) / (1000 * 60 * 60 * 24))
@@ -371,10 +379,10 @@ export default function InternTasks() {
     }
     const milestones = end ? [
       { label: 'Start', date: start, pct: 0 },
-      { label: '25%',   date: new Date(start.getTime() + (end - start) * 0.25), pct: 25 },
-      { label: 'Mid',   date: new Date(start.getTime() + (end - start) * 0.5),  pct: 50 },
-      { label: '75%',   date: new Date(start.getTime() + (end - start) * 0.75), pct: 75 },
-      { label: 'End',   date: end, pct: 100 },
+      { label: '25%', date: new Date(start.getTime() + (end - start) * 0.25), pct: 25 },
+      { label: 'Mid', date: new Date(start.getTime() + (end - start) * 0.5), pct: 50 },
+      { label: '75%', date: new Date(start.getTime() + (end - start) * 0.75), pct: 75 },
+      { label: 'End', date: end, pct: 100 },
     ] : []
     return { start, end, pct, daysLeft, totalDays, milestones }
   }
@@ -402,7 +410,7 @@ export default function InternTasks() {
       {/* ── Tabs ── */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e5e7eb' }}>
         {[
-          { key: 'tasks',    label: `✅ My Tasks (${tasks.length})` },
+          { key: 'tasks', label: `✅ My Tasks (${tasks.length})` },
           { key: 'timeline', label: '📅 Internship Timeline' },
         ].map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
@@ -418,12 +426,16 @@ export default function InternTasks() {
       </div>
 
       {error && (
-        <p style={{ color: '#dc2626', background: '#fef2f2', padding: '10px 14px',
-          borderRadius: 8, marginBottom: 16, fontWeight: 600 }}>✗ {error}</p>
+        <p style={{
+          color: '#dc2626', background: '#fef2f2', padding: '10px 14px',
+          borderRadius: 8, marginBottom: 16, fontWeight: 600
+        }}>✗ {error}</p>
       )}
       {successMsg && (
-        <p style={{ color: '#16a34a', background: '#f0fdf4', padding: '10px 14px',
-          borderRadius: 8, marginBottom: 16, fontWeight: 600 }}>✓ {successMsg}</p>
+        <p style={{
+          color: '#16a34a', background: '#f0fdf4', padding: '10px 14px',
+          borderRadius: 8, marginBottom: 16, fontWeight: 600
+        }}>✓ {successMsg}</p>
       )}
 
       {/* ════════════════════════════════
@@ -452,33 +464,38 @@ export default function InternTasks() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {tasks.map(task => {
-                const isOverdue  = new Date(task.due_date) < new Date() && task.status !== 'completed'
+                const isOverdue = new Date(task.due_date) < new Date() && task.status !== 'completed'
                 const isUpdating = updating === task.id
                 const isRejected = task.status === 'rejected'
-                const canSubmit  = task.status !== 'completed' && task.status !== 'review'
+                const canSubmit = task.status !== 'completed' && task.status !== 'review'
 
                 return (
                   <section key={task.id} className="card" style={{
-                    borderLeft: `4px solid ${
-                      task.status === 'completed' ? '#16a34a' :
-                      task.status === 'review'    ? '#7c3aed' :
-                      task.status === 'rejected'  ? '#dc2626' :
-                      isOverdue                   ? '#dc2626' : '#00b1b4'
-                    }`,
+                    borderLeft: `4px solid ${task.status === 'completed' ? '#16a34a' :
+                        task.status === 'review' ? '#7c3aed' :
+                          task.status === 'rejected' ? '#dc2626' :
+                            isOverdue ? '#dc2626' : '#00b1b4'
+                      }`,
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between',
-                      alignItems: 'flex-start', flexWrap: 'wrap', gap: 12 }}>
+                    <div style={{
+                      display: 'flex', justifyContent: 'space-between',
+                      alignItems: 'flex-start', flexWrap: 'wrap', gap: 12
+                    }}>
 
                       <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10,
-                          marginBottom: 6, flexWrap: 'wrap' }}>
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: 10,
+                          marginBottom: 6, flexWrap: 'wrap'
+                        }}>
                           <h3 style={{ margin: 0, fontSize: 16 }}>{task.title}</h3>
                           <Badge value={task.priority} map={PRIORITY_COLORS} />
-                          <Badge value={task.status}   map={STATUS_COLORS} />
+                          <Badge value={task.status} map={STATUS_COLORS} />
                           {isOverdue && (
-                            <span style={{ background: '#fef2f2', color: '#dc2626',
+                            <span style={{
+                              background: '#fef2f2', color: '#dc2626',
                               border: '1px solid #fecaca', borderRadius: 6,
-                              padding: '2px 10px', fontSize: 12, fontWeight: 600 }}>
+                              padding: '2px 10px', fontSize: 12, fontWeight: 600
+                            }}>
                               ⚠ Overdue
                             </span>
                           )}
@@ -490,19 +507,23 @@ export default function InternTasks() {
                           </p>
                         )}
 
-                        <div style={{ display: 'flex', gap: 20, fontSize: 13,
-                          color: '#6b7280', flexWrap: 'wrap' }}>
+                        <div style={{
+                          display: 'flex', gap: 20, fontSize: 13,
+                          color: '#6b7280', flexWrap: 'wrap'
+                        }}>
                           <span>📅 Due: <strong style={{ color: isOverdue ? '#dc2626' : '#374151' }}>
                             {task.due_date}
                           </strong></span>
                           {task.tech_stack && <span>🛠 {task.tech_stack}</span>}
-                          {task.assigner  && <span>👤 By: <strong>{task.assigner.name}</strong></span>}
+                          {task.assigner && <span>👤 By: <strong>{task.assigner.name}</strong></span>}
                         </div>
 
                         {/* Progress bar */}
                         <div style={{ marginTop: 12, display: 'flex', alignItems: 'center', gap: 10 }}>
-                          <div style={{ flex: 1, height: 8, background: '#e5e7eb',
-                            borderRadius: 99, overflow: 'hidden', maxWidth: 300 }}>
+                          <div style={{
+                            flex: 1, height: 8, background: '#e5e7eb',
+                            borderRadius: 99, overflow: 'hidden', maxWidth: 300
+                          }}>
                             <div style={{
                               height: '100%', borderRadius: 99, background: '#00b1b4',
                               width: `${task.completion_percentage || 0}%`,
@@ -607,11 +628,11 @@ export default function InternTasks() {
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(150px, 1fr))', gap: 8 }}>
                     {[
-                      { label: 'Technical',       value: ev.technical_skills },
-                      { label: 'Communication',   value: ev.communication },
-                      { label: 'Teamwork',        value: ev.teamwork },
+                      { label: 'Technical', value: ev.technical_skills },
+                      { label: 'Communication', value: ev.communication },
+                      { label: 'Teamwork', value: ev.teamwork },
                       { label: 'Problem Solving', value: ev.problem_solving },
-                      { label: 'Punctuality',     value: ev.punctuality },
+                      { label: 'Punctuality', value: ev.punctuality },
                     ].map(({ label, value }) => (
                       <div key={label} style={{ background: '#fff', borderRadius: 8, padding: '10px 14px', border: '1px solid #e2e8f0', textAlign: 'center' }}>
                         <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>{label}</div>
@@ -653,10 +674,10 @@ export default function InternTasks() {
               {/* Info cards */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 24 }}>
                 {[
-                  { label: 'College',    value: trainee.college_name || '—' },
-                  { label: 'Course',     value: trainee.course || '—' },
+                  { label: 'College', value: trainee.college_name || '—' },
+                  { label: 'Course', value: trainee.course || '—' },
                   { label: 'Batch Year', value: trainee.batch_year || '—' },
-                  { label: 'GPA',        value: trainee.gpa ? `${trainee.gpa} / 10` : '—' },
+                  { label: 'GPA', value: trainee.gpa ? `${trainee.gpa} / 10` : '—' },
                 ].map(item => (
                   <div key={item.label} style={{ background: '#f8fafc', borderRadius: 8, padding: '12px 14px', border: '1px solid #e2e8f0' }}>
                     <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 3 }}>{item.label}</div>
@@ -670,8 +691,10 @@ export default function InternTasks() {
                 <>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
                     <span style={{ fontSize: 13, color: '#374151', fontWeight: 600 }}>Internship Progress</span>
-                    <span style={{ fontSize: 13, fontWeight: 700,
-                      color: tl.daysLeft === 0 ? '#16a34a' : tl.daysLeft <= 14 ? '#dc2626' : '#00b1b4' }}>
+                    <span style={{
+                      fontSize: 13, fontWeight: 700,
+                      color: tl.daysLeft === 0 ? '#16a34a' : tl.daysLeft <= 14 ? '#dc2626' : '#00b1b4'
+                    }}>
                       {tl.daysLeft === 0 ? '✓ Completed!' : tl.daysLeft <= 14 ? `⚠ ${tl.daysLeft} days left` : `${tl.daysLeft} days remaining`}
                     </span>
                   </div>
@@ -694,8 +717,10 @@ export default function InternTasks() {
                             background: isPast ? '#003b5c' : '#fff',
                             border: `3px solid ${isPast ? '#00b1b4' : '#d1d5db'}`,
                           }} />
-                          <div style={{ position: 'absolute', top: 24, left: '50%', transform: 'translateX(-50%)',
-                            whiteSpace: 'nowrap', fontSize: 11, color: '#6b7280', textAlign: 'center' }}>
+                          <div style={{
+                            position: 'absolute', top: 24, left: '50%', transform: 'translateX(-50%)',
+                            whiteSpace: 'nowrap', fontSize: 11, color: '#6b7280', textAlign: 'center'
+                          }}>
                             <div style={{ fontWeight: 700, color: isPast ? '#003b5c' : '#9ca3af' }}>{m.label}</div>
                             <div>{m.date.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>
                           </div>
