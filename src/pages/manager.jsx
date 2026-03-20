@@ -18,7 +18,7 @@ const STATUS_COLORS = {
   rejected:    { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
 }
 const LEAVE_STATUS = {
-  pending_leave:  { label: '⏳ Pending',  bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
+  pending_leave:  { label: ' Pending',  bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
   on_leave:       { label: '✓ Approved', bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
   leave_rejected: { label: '✕ Rejected', bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },
 }
@@ -787,12 +787,12 @@ export default function Manager() {
   const overdueCount   = tasks.filter(t => new Date(t.due_date) < new Date() && t.status !== 'completed').length
 
   const TABS = [
-    { key: 'overview',          label: '📊 Overview' },
-    { key: 'interns',           label: `👥 My Interns (${interns.length})` },
-    { key: 'all-interns',       label: `🔍 All Interns (${allInterns.length})` },
-    { key: 'tasks',             label: `📋 Tasks (${tasks.length})` },
-    { key: 'project-progress',  label: '📈 Project Progress' },
-    { key: 'leaves',            label: `🌴 Leaves${pendingLeaves.length ? ` (${pendingLeaves.length} pending)` : ''}` },
+    { key: 'overview',          label: ' Overview' },
+    { key: 'interns',           label: ` My Interns (${interns.length})` },
+    { key: 'all-interns',       label: ` All Interns (${allInterns.length})` },
+    { key: 'tasks',             label: ` Tasks (${tasks.length})` },
+    { key: 'project-progress',  label: ' Project Progress' },
+    { key: 'leaves',            label: ` Leaves${pendingLeaves.length ? ` (${pendingLeaves.length} pending)` : ''}` },
   ]
 
   return (

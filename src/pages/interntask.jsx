@@ -18,6 +18,7 @@ const STATUS_COLORS = {
   completed: { bg: '#f0fdf4', text: '#16a34a' },
   blocked: { bg: '#fef2f2', text: '#dc2626' },
   rejected: { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' },
+  hold: { bg: '#f8fafc', text: '#475569', border: '#e2e8f0' },
 }
 
 function Badge({ value, map }) {
@@ -48,6 +49,14 @@ function SubmitModal({ task, onClose, onSubmit }) {
   const [workNotes, setWorkNotes] = useState('')
   const [status, setStatus] = useState('review')
   const [completion, setCompletion] = useState(task.completion_percentage || 0)
+
+  const handleStatusChange = (newStatus) => {
+    setStatus(newStatus)
+    if (newStatus === 'todo') setCompletion(0)
+    else if (newStatus === 'in_progress') setCompletion(Math.max(20, completion))
+    else if (newStatus === 'review') setCompletion(Math.max(50, completion))
+    else if (newStatus === 'completed') setCompletion(100)
+  }
   const [file, setFile] = useState(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
@@ -163,7 +172,7 @@ function SubmitModal({ task, onClose, onSubmit }) {
               display: 'block', fontWeight: 600, fontSize: 14,
               color: '#374151', marginBottom: 8
             }}>
-              📝 Work Notes <span style={{ color: '#dc2626' }}>*</span>
+              Work Notes <span style={{ color: '#dc2626' }}>*</span>
             </label>
             <textarea
               value={workNotes}
@@ -185,10 +194,13 @@ function SubmitModal({ task, onClose, onSubmit }) {
           <div style={{ display: 'flex', gap: 16, marginBottom: 18, flexWrap: 'wrap' }}>
             <div className="form-group" style={{ margin: 0, flex: 1, minWidth: 160 }}>
               <label>Submission Status</label>
-              <select value={status} onChange={e => setStatus(e.target.value)}>
-                <option value="in_progress">Still In Progress</option>
+              <select value={status} onChange={e => handleStatusChange(e.target.value)}>
+                <option value="todo">To Do</option>
+                <option value="in_progress">In Progress</option>
                 <option value="review">Done — Send for Review</option>
                 <option value="completed">Completed</option>
+                <option value="blocked">Blocked</option>
+                <option value="hold">Hold</option>
               </select>
             </div>
             <div className="form-group" style={{ margin: 0, flex: 2, minWidth: 200 }}>
@@ -254,7 +266,7 @@ function SubmitModal({ task, onClose, onSubmit }) {
             background: '#fffbeb', border: '1px solid #fde68a',
             borderRadius: 8, padding: '10px 14px', fontSize: 13, color: '#92400e',
           }}>
-            ⚠️ Submitting will update the task status and notify your manager.
+            Submitting will update the task status and notify your manager.
           </div>
 
           {/* Error */}
@@ -282,7 +294,7 @@ function SubmitModal({ task, onClose, onSubmit }) {
               opacity: submitting ? 0.7 : 1,
             }}
           >
-            {submitting ? 'Submitting…' : '🚀 Submit Task'}
+            {submitting ? 'Submitting…' : ' Submit Task'}
           </button>
         </div>
       </div>
@@ -333,7 +345,16 @@ export default function InternTasks() {
 
   const handleUpdateChange = (e) => {
     const { name, value } = e.target
-    setUpdateForm(prev => ({ ...prev, [name]: value }))
+    setUpdateForm(prev => {
+      const next = { ...prev, [name]: value }
+      if (name === 'status') {
+        if (value === 'todo') next.completion_percentage = 0
+        else if (value === 'in_progress') next.completion_percentage = Math.max(20, prev.completion_percentage)
+        else if (value === 'review') next.completion_percentage = Math.max(50, prev.completion_percentage)
+        else if (value === 'completed') next.completion_percentage = 100
+      }
+      return next
+    })
   }
 
   // Quick progress update — no notes, no file, just status + %
@@ -410,8 +431,8 @@ export default function InternTasks() {
       {/* ── Tabs ── */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e5e7eb' }}>
         {[
-          { key: 'tasks', label: `✅ My Tasks (${tasks.length})` },
-          { key: 'timeline', label: '📅 Internship Timeline' },
+          { key: 'tasks', label: ` My Tasks (${tasks.length})` },
+          { key: 'timeline', label: ' Internship Timeline' },
         ].map(t => (
           <button key={t.key} onClick={() => setActiveTab(t.key)} style={{
             padding: '8px 20px', border: 'none', cursor: 'pointer', background: 'none',
@@ -472,9 +493,9 @@ export default function InternTasks() {
                 return (
                   <section key={task.id} className="card" style={{
                     borderLeft: `4px solid ${task.status === 'completed' ? '#16a34a' :
-                        task.status === 'review' ? '#7c3aed' :
-                          task.status === 'rejected' ? '#dc2626' :
-                            isOverdue ? '#dc2626' : '#00b1b4'
+                      task.status === 'review' ? '#7c3aed' :
+                        task.status === 'rejected' ? '#dc2626' :
+                          isOverdue ? '#dc2626' : '#00b1b4'
                       }`,
                   }}>
                     <div style={{
@@ -511,11 +532,11 @@ export default function InternTasks() {
                           display: 'flex', gap: 20, fontSize: 13,
                           color: '#6b7280', flexWrap: 'wrap'
                         }}>
-                          <span>📅 Due: <strong style={{ color: isOverdue ? '#dc2626' : '#374151' }}>
+                          <span> Due: <strong style={{ color: isOverdue ? '#dc2626' : '#374151' }}>
                             {task.due_date}
                           </strong></span>
                           {task.tech_stack && <span>🛠 {task.tech_stack}</span>}
-                          {task.assigner && <span>👤 By: <strong>{task.assigner.name}</strong></span>}
+                          {task.assigner && <span> By: <strong>{task.assigner.name}</strong></span>}
                         </div>
 
                         {/* Progress bar */}
@@ -589,6 +610,7 @@ export default function InternTasks() {
                               <option value="review">Review</option>
                               <option value="completed">Completed</option>
                               <option value="blocked">Blocked</option>
+                              <option value="hold">Hold</option>
                             </select>
                           </div>
                           <div className="form-group" style={{ margin: 0, minWidth: 200 }}>

@@ -191,7 +191,7 @@ function Users() {
                           navigate('/user-form', { state: { user } })
                         }
                       >
-                        ✏️ Edit
+                         Edit
                       </button>
 
                       {/* Activate / Deactivate */}

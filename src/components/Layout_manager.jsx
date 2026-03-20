@@ -140,7 +140,7 @@ function Layout({ children }) {
                     <div className="user-name">{user.name}</div>
                     <div className="user-role">
                       {user.role}
-                      {user.role_id === 4 && <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 3 }}>✏️</span>}
+                      {user.role_id === 4 && <span style={{ fontSize: 10, opacity: 0.6, marginLeft: 3 }}>✎</span>}
                     </div>
                   </div>
                 </div>

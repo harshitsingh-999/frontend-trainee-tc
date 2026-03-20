@@ -20,7 +20,7 @@ const LEAVE_TYPES = [
 ]
 
 const STATUS_INFO = {
-  pending_leave: { label: '⏳ Pending', bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
+  pending_leave: { label: ' Pending', bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
   on_leave: { label: '✓ Approved', bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
   leave_rejected: { label: '✕ Rejected', bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },
 }
@@ -71,7 +71,7 @@ function BalanceCard({ type, data }) {
       </div>
       <div style={{ display: 'flex', gap: 12, fontSize: 12, color: '#6b7280' }}>
         <span>✓ Used: <strong style={{ color: '#374151' }}>{data.used}</strong></span>
-        <span>⏳ Pending: <strong style={{ color: '#374151' }}>{data.pending}</strong></span>
+        <span> Pending: <strong style={{ color: '#374151' }}>{data.pending}</strong></span>
       </div>
     </div>
   )

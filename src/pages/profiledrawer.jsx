@@ -311,7 +311,7 @@ export default function ProfileDrawer({ open, onClose }) {
               borderRadius: 10, padding: '12px 16px', marginBottom: 20,
               fontSize: 13, color: '#92400e',
             }}>
-              ⏳ Your profile is <strong>pending admin approval</strong>. You can still edit your details.
+               Your profile is <strong>pending admin approval</strong>. You can still edit your details.
             </div>
           )}
 
@@ -343,7 +343,7 @@ export default function ProfileDrawer({ open, onClose }) {
             // ── EDIT MODE ────────────────────────────────
             <div>
               <h4 style={{ margin: '0 0 16px', color: '#003b5c', fontSize: 15 }}>
-                {isNew ? '📋 Complete Your Profile' : '✏️ Edit Profile'}
+                {isNew ? '📋 Complete Your Profile' : ' Edit Profile'}
               </h4>
 
               {/* Contact */}
@@ -548,7 +548,7 @@ export default function ProfileDrawer({ open, onClose }) {
                   fontSize: 14, cursor: 'pointer',
                 }}
               >
-                ✏️ Edit Profile
+                 Edit Profile
               </button>
             )}
           </div>
