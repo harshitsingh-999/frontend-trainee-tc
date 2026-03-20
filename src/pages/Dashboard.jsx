@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/authcontext.jsx'
 import { useNavigate } from 'react-router-dom'
 import api from '../api/login_api.js'
-import { useUser } from '../context/UserContext.jsx'
 
 function daysRemaining() {
   const today = new Date()
@@ -29,7 +28,6 @@ function formatTime(time) {
 function Dashboard() {
   const { user, logout, loading } = useAuth()
   const navigate = useNavigate()
-  const { users, fetchUsers, loading: usersLoading, error: usersError } = useUser()
 
   // ── ALL hooks must be at the top, before any early return ──
   const [todayAttendance,   setTodayAttendance]   = useState(null)
@@ -41,7 +39,6 @@ function Dashboard() {
   const [interns,           setInterns]           = useState([])
   const [chartsReady,       setChartsReady]       = useState(false)
   const [ChartComponents,   setChartComponents]   = useState(null)
-  const [stats,             setStats]             = useState([])
 
   const isIntern  = user?.role_id === 4
   const isManager = user?.role_id === 1 || user?.role_id === 2
@@ -64,35 +61,6 @@ function Dashboard() {
       api.get('/manager/interns').then(r => setInterns(r.data.data || [])).catch(() => {})
     }
   }, [isIntern, isManager])
-
-  // Fetch users for summary stats (admin/manager view)
-  useEffect(() => {
-    fetchUsers()
-  }, [fetchUsers])
-
-  // Build stats from real user data
-  useEffect(() => {
-    if (users && users.length > 0) {
-      const activeUsers = users.filter(u => u.is_active === 1 || u.is_active === true).length
-      const managers    = users.filter(u => u.role_id === 2).length
-      const trainees    = users.filter(u => u.role_id === 3).length
-      const internsCount = users.filter(u => u.role_id === 4).length
-      setStats([
-        { label: 'Total Users',         value: users.length },
-        { label: 'Active Users',         value: activeUsers },
-        { label: 'Managers',             value: managers },
-        { label: 'Trainees & Interns',   value: trainees + internsCount },
-      ])
-    } else {
-      // fallback while loading or no data
-      setStats([
-        { label: 'Active Interns',                value: '—' },
-        { label: 'Buddies Assigned',              value: '—' },
-        { label: 'Managers',                      value: '—' },
-        { label: 'Internships Ending This Month', value: '—' },
-      ])
-    }
-  }, [users])
 
   // Early returns AFTER all hooks
   if (loading) return <div style={{ padding: '30px' }}>Loading...</div>

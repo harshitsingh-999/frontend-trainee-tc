@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
-import api from "../api/login_api.js";
+import axiosClient from "../api/axiosClient.js";
 
 const AuthContext = createContext(null);
 
@@ -21,8 +21,13 @@ const persistUser = (nextUser) => {
   localStorage.setItem("user", JSON.stringify(nextUser));
 };
 
+const getPersistedToken = () =>
+  localStorage.getItem("token") || localStorage.getItem("authToken");
+
 const clearPersistedUser = () => {
   localStorage.removeItem("user");
+  localStorage.removeItem("token");
+  localStorage.removeItem("authToken");
 };
 
 export function AuthProvider({ children }) {
@@ -30,7 +35,16 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api
+    const token = getPersistedToken();
+
+    if (!token) {
+      setUser(null);
+      clearPersistedUser();
+      setLoading(false);
+      return;
+    }
+
+    axiosClient
       .get("/auth/me", { params: { _ts: Date.now() } })
       .then((res) => {
         const normalizedUser = normalizeUser(res.data.data);
@@ -54,7 +68,7 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     try {
-      await api.post("/auth/logout");
+      await axiosClient.post("/auth/logout");
     } catch {
       // Clear local state even if the API call fails.
     }
