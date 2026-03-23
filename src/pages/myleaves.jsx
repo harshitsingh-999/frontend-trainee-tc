@@ -191,7 +191,7 @@ export default function MyLeaves() {
       {/* ── header ── */}
       <div className="dashboard-header">
         <div>
-          <h2>🌴 My Leaves</h2>
+          <h2>🤒 My Leaves</h2>
           <p>Apply for leave, track your quota, and view request status.</p>
         </div>
         <div style={{ fontSize: 13, color: '#6b7280' }}>
@@ -360,7 +360,7 @@ export default function MyLeaves() {
 
           {leaves.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '50px 0', color: '#9ca3af' }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>🌴</div>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🤒</div>
               <p style={{ marginBottom: 8 }}>No leave requests yet.</p>
               <button onClick={() => setTab('apply')} style={{
                 padding: '8px 20px', borderRadius: 8, border: 'none',

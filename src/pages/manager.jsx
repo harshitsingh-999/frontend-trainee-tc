@@ -1233,7 +1233,7 @@ export default function Manager() {
           {/* Sub-tab switcher */}
           <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '1px solid #e5e7eb' }}>
             {[
-              { key: 'requests', label: `🌴 Leave Requests${pendingLeaves.length ? ` (${pendingLeaves.length})` : ''}` },
+              { key: 'requests', label: `🤒 Leave Requests${pendingLeaves.length ? ` (${pendingLeaves.length})` : ''}` },
               { key: 'assign',   label: '+ Manually Assign Leave' },
             ].map(t => (
               <button key={t.key} onClick={() => setLeaveTab(t.key)} style={{
