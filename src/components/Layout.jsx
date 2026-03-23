@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { FaBars, FaTachometerAlt, FaUsers, FaUserPlus } from 'react-icons/fa'
+import Sidebar from "./Sidebar";
+
 
 function Layout({ children, user, onLogout }) {
   const location = useLocation()
@@ -27,7 +29,7 @@ function Layout({ children, user, onLogout }) {
   return (
     <div className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
 
-      <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+      {/* <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
 
         <div className="sidebar-top">
           <button
@@ -61,7 +63,12 @@ function Layout({ children, user, onLogout }) {
           </NavLink>
         </nav>
 
-      </aside>
+      </aside> */}
+      <Sidebar 
+  role={user?.role || "intern"} 
+  collapsed={collapsed} 
+  toggleCollapse={() => setCollapsed(!collapsed)} 
+/>
 
       <div className="main-area">
         <header className="topbar">
