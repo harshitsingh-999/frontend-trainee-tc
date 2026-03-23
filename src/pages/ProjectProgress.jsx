@@ -205,6 +205,16 @@ export default function ProjectProgress() {
     setLoading(false)
   }, [])
 
+  const handleDeleteProject = async (projectId) => {
+    if (!window.confirm('Are you sure you want to delete this project? All associated tasks will also be deleted.')) return
+    try {
+      await api.delete(`/manager/projects/${projectId}`)
+      fetchData()
+    } catch (err) {
+      alert(err.response?.data?.message || 'Failed to delete project')
+    }
+  }
+
   useEffect(() => { fetchData() }, [fetchData])
 
   // Summary stats
@@ -291,7 +301,7 @@ export default function ProjectProgress() {
         </div>
       )}
 
-      {/* ── Project cards ── */}
+      {/* ── Project Table ── */}
       {filtered.length === 0 ? (
         <section className="card">
           <div style={{ textAlign: 'center', padding: '60px 0', color: '#9ca3af' }}>
@@ -304,84 +314,107 @@ export default function ProjectProgress() {
           </div>
         </section>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-          {filtered.map(({ project, interns: internList }) => {
-            const sc = STATUS_COLORS[project.status] || STATUS_COLORS.planning
-            const pc = PRIORITY_COLORS[project.priority] || PRIORITY_COLORS.medium
-            const totalTasks     = internList.reduce((s, i) => s + i.totalTasks, 0)
-            const completedTasks = internList.reduce((s, i) => s + i.completedTasks, 0)
-            const projectPct     = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
+        <section className="card" style={{ padding: 0, overflow: 'hidden' }}>
+          <div className="table-wrapper">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th style={{ width: 40 }}></th>
+                  <th>Project Name</th>
+                  <th>Status</th>
+                  <th>Priority</th>
+                  <th>Assignments</th>
+                  <th>Total Progress</th>
+                  <th style={{ textAlign: 'right' }}>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filtered.map(({ project, interns: internList }) => {
+                  const isExpanded = activeFilter === String(project.id) || (activeFilter === 'all' && filtered.length === 1)
+                  const sc = STATUS_COLORS[project.status] || STATUS_COLORS.planning
+                  const pc = PRIORITY_COLORS[project.priority] || PRIORITY_COLORS.medium
+                  const totalTasks     = internList.reduce((s, i) => s + i.totalTasks, 0)
+                  const completedTasks = internList.reduce((s, i) => s + i.completedTasks, 0)
+                  const projectPct     = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
 
-            return (
-              <section key={project.id} className="card">
-                {/* Project header */}
-                <div style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                  flexWrap: 'wrap', gap: 12, marginBottom: 20,
-                  paddingBottom: 16, borderBottom: '1px solid #e5e7eb',
-                }}>
-                  <div style={{ flex: 1, minWidth: 200 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', marginBottom: 6 }}>
-                      <h3 style={{ margin: 0, color: '#003b5c', fontSize: 18 }}>{project.project_name}</h3>
-                      <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
-                        background: sc.bg, color: sc.color, textTransform: 'capitalize' }}>
-                        {project.status?.replace('_', ' ')}
-                      </span>
-                      <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
-                        background: pc.bg, color: pc.color, textTransform: 'capitalize' }}>
-                        {project.priority} priority
-                      </span>
-                    </div>
-                    {project.description && (
-                      <p style={{ margin: '0 0 8px', fontSize: 13, color: '#6b7280' }}>{project.description}</p>
-                    )}
-                    <div style={{ fontSize: 12, color: '#9ca3af' }}>
-                      {project.start_date && `${formatDate(project.start_date)} → ${project.end_date ? formatDate(project.end_date) : 'Ongoing'}`}
-                    </div>
-                  </div>
-
-                  {/* Project-level progress */}
-                  <div style={{
-                    background: '#f8fafc', border: '1px solid #e2e8f0',
-                    borderRadius: 12, padding: '12px 20px', textAlign: 'center', minWidth: 120,
-                  }}>
-                    <div style={{ fontSize: 11, color: '#9ca3af', marginBottom: 2 }}>Project Progress</div>
-                    <div style={{ fontSize: 28, fontWeight: 900,
-                      color: projectPct >= 80 ? '#16a34a' : projectPct >= 40 ? '#003b5c' : '#d97706' }}>
-                      {projectPct}%
-                    </div>
-                    <div style={{ fontSize: 11, color: '#9ca3af' }}>
-                      {completedTasks}/{totalTasks} tasks
-                    </div>
-                    <div style={{ height: 5, background: '#e5e7eb', borderRadius: 99, overflow: 'hidden', marginTop: 8 }}>
-                      <div style={{
-                        height: '100%', width: `${projectPct}%`, borderRadius: 99,
-                        background: projectPct >= 80 ? '#16a34a' : projectPct >= 40 ? '#00b1b4' : '#d97706',
-                        transition: 'width 0.6s ease',
-                      }} />
-                    </div>
-                  </div>
-                </div>
-
-                {/* Intern list */}
-                {internList.length === 0 ? (
-                  <div style={{ padding: '20px 0', color: '#9ca3af', fontSize: 13, textAlign: 'center' }}>
-                    No tasks assigned under this project yet.
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600, marginBottom: 2 }}>
-                      {internList.length} intern{internList.length !== 1 ? 's' : ''} working on this project
-                    </div>
-                    {internList.map(internData => (
-                      <InternProgressCard key={internData.user?.id} internData={internData} />
-                    ))}
-                  </div>
-                )}
-              </section>
-            )
-          })}
-        </div>
+                  return (
+                    <React.Fragment key={project.id}>
+                      <tr
+                        onClick={() => setActiveFilter(activeFilter === String(project.id) ? 'all' : String(project.id))}
+                        style={{ cursor: 'pointer', background: isExpanded ? '#f8fafc' : 'transparent' }}
+                      >
+                        <td style={{ color: '#9ca3af', fontSize: 12 }}>{isExpanded ? '▼' : '▶'}</td>
+                        <td>
+                          <div style={{ fontWeight: 700, color: '#003b5c' }}>{project.project_name}</div>
+                          <div style={{ fontSize: 11, color: '#9ca3af' }}>{formatDate(project.start_date)}</div>
+                        </td>
+                        <td>
+                          <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700,
+                            background: sc.bg, color: sc.color, textTransform: 'capitalize' }}>
+                            {project.status?.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td>
+                          <span style={{ padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 600,
+                            background: pc.bg, color: pc.color, textTransform: 'capitalize' }}>
+                            {project.priority}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                            <span style={{ fontWeight: 700, color: '#003b5c' }}>{internList.length}</span>
+                            <span style={{ fontSize: 11, color: '#6b7280' }}>Interns</span>
+                          </div>
+                        </td>
+                        <td style={{ minWidth: 140 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <div style={{ flex: 1, height: 6, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${projectPct}%`, background: projectPct >= 80 ? '#16a34a' : '#00b1b4' }} />
+                            </div>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: '#003b5c', minWidth: 35 }}>{projectPct}%</span>
+                          </div>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end' }}>
+                            <button className="btn-small btn-secondary" style={{ fontSize: 11 }}>Details</button>
+                            <button
+                              className="btn-small"
+                              style={{ fontSize: 11, background: '#fef2f2', color: '#dc2626', border: '1px solid #fee2e2' }}
+                              onClick={(e) => {
+                                e.stopPropagation(); // don't toggle expansion
+                                handleDeleteProject(project.id);
+                              }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={7} style={{ padding: '0 0 20px 48px', background: '#f8fafc' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginTop: 10 }}>
+                              <div style={{ fontSize: 12, color: '#6b7280', fontWeight: 600 }}>Intern Assignments & Progress</div>
+                              {internList.length === 0 ? (
+                                <div style={{ fontSize: 13, color: '#9ca3af', fontStyle: 'italic' }}>No interns assigned to this project.</div>
+                              ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: 16, paddingRight: 20 }}>
+                                  {internList.map(internData => (
+                                    <InternProgressCard key={internData.user?.id} internData={internData} />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        </section>
       )}
 
       {/* ── Create Project Modal ── */}

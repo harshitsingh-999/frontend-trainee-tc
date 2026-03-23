@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/authcontext.jsx'
 import ProfileDrawer from '../pages/profiledrawer.jsx'
 import api from '../api/login_api.js'
+import { Link } from "react-router-dom";
 
 const API_BASE = api.defaults.baseURL ? api.defaults.baseURL.replace(/\/api\/v1\/?$/, '') : 'http://localhost:7357';
 const getAvatarUrl = (url) => url ? `${API_BASE}${url}` : null;
@@ -40,10 +41,12 @@ function Layout({ children }) {
   if (location.pathname === '/login') return children
 
   const navLinks = [
+
     { to: '/dashboard', label: '  Dashboard', roles: [1, 2, 3, 4] },
     { to: '/attendance', label: '  Attendance', roles: [1, 2, 3, 4] },
     { to: '/my-tasks', label: '  My Tasks', roles: [4] },
     { to: '/my-leaves', label: '  My Leaves', roles: [4] },
+    { to: '/calendar', label: '  Calendar', roles: [1, 2, 3, 4] },
     { to: '/manager', label: '  Manager', roles: [1, 2] },
     { to: '/project-progress', label: '  Project Progress', roles: [1, 2] },
     { to: '/user-form', label: '  User Form', roles: [1] },
@@ -82,6 +85,7 @@ function Layout({ children }) {
             </NavLink>
           ))}
         </nav>
+
 
         {/* User chip pinned to bottom of sidebar — helpful on mobile */}
         <div className="sidebar-user-chip">

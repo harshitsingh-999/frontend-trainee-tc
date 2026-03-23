@@ -18,6 +18,7 @@ import AdminDashboard from './pages/Admin/Dashboard.jsx'
 import UsersList from './pages/Admin/UsersList.jsx'
 import CreateUser from './pages/Admin/CreateUser.jsx'
 import ProjectProgress from './pages/ProjectProgress.jsx'
+import Calendar from "./pages/Calender.jsx";
 
 const SUPERADMIN_EMAILS = [
   'superadmin@company.com',
@@ -96,6 +97,9 @@ function App() {
             getRedirectPath={getRedirectPath}
           />
         } />
+        
+        <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
+
 
         {/* Root redirect */}
         <Route path="/" element={<Navigate to={user ? getRedirectPath(user) : '/login'} replace />} />
