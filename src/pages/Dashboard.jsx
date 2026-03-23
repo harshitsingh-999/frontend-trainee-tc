@@ -41,6 +41,8 @@ function Dashboard() {
   const [chartsReady, setChartsReady] = useState(false)
   const [trainee, setTrainee] = useState(null)
   const [traineeLoading, setTraineeLoading] = useState(false)
+  const [recentSubmissions, setRecentSubmissions] = useState([])
+  const [recentLoading, setRecentLoading] = useState(false)
 
   const isIntern = user?.role_id === 4
   const isManager = user?.role_id === 1 || user?.role_id === 2
@@ -62,10 +64,22 @@ function Dashboard() {
         .then(r => setTrainee(r.data.data?.trainee || null))
         .catch(() => { })
         .finally(() => setTraineeLoading(false))
+      
+      setRecentLoading(true)
+      api.get('/intern/recent-submissions')
+        .then(r => setRecentSubmissions(r.data.data || []))
+        .catch(() => { })
+        .finally(() => setRecentLoading(false))
     }
     if (isManager) {
       api.get('/manager/tasks').then(r => setMyTasks(r.data.data || [])).catch(() => { })
       api.get('/manager/interns').then(r => setInterns(r.data.data || [])).catch(() => { })
+      
+      setRecentLoading(true)
+      api.get('/manager/recent-submissions')
+        .then(r => setRecentSubmissions(r.data.data || []))
+        .catch(() => { })
+        .finally(() => setRecentLoading(false))
     }
   }, [isIntern, isManager])
 
@@ -363,16 +377,24 @@ function Dashboard() {
                 </tr>
               </thead>
               <tbody>
-                {[
-                  { name: 'Ananya Sharma', role: 'Intern', buddy: 'Rahul Verma', date: '24 Feb 2026', hours: '7.5', summary: 'Worked on UI for intern dashboard and bug fixes.' },
-                  { name: 'Rohan Singh', role: 'Trainee', buddy: 'Priya Nair', date: '24 Feb 2026', hours: '6', summary: 'Prepared daily MIS reports and data clean-up.' },
-                  { name: 'Mehak Kaur', role: 'Intern', buddy: 'Saurabh Gupta', date: '23 Feb 2026', hours: '8', summary: 'Shadowed client meetings and documented minutes.' },
-                ].map((entry, i) => (
-                  <tr key={i}>
-                    <td>{entry.name}</td><td>{entry.role}</td><td>{entry.buddy}</td>
-                    <td>{entry.date}</td><td>{entry.hours}</td><td>{entry.summary}</td>
-                  </tr>
-                ))}
+                {recentLoading ? (
+                  <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: '#6b7280' }}>Loading work logs...</td></tr>
+                ) : recentSubmissions.length === 0 ? (
+                  <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px', color: '#9ca3af' }}>No work logs found yet.</td></tr>
+                ) : (
+                  recentSubmissions.map((entry) => (
+                    <tr key={entry.id}>
+                      <td style={{ fontWeight: 600, color: '#003b5c' }}>{isManager ? entry.intern?.name : user?.name}</td>
+                      <td>{isManager ? (entry.intern?.role_id === 4 ? 'Intern' : 'Trainee') : role}</td>
+                      <td>{entry.intern?.trainee?.buddy?.name || '—'}</td>
+                      <td>{new Date(entry.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</td>
+                      <td>—</td>
+                      <td style={{ maxWidth: 300, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={entry.work_notes}>
+                        <strong>{entry.task?.title}:</strong> {entry.work_notes}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>

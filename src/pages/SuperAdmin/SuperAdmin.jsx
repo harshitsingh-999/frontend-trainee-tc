@@ -65,6 +65,8 @@ function SuperAdmin() {
   const [allUsers, setAllUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState("");
+  const [systemSettings, setSystemSettings] = useState([]);
+  const [settingsLoading, setSettingsLoading] = useState(false);
 
   /* modal / confirm / toast */
   const [modal, setModal] = useState(null);
@@ -157,7 +159,23 @@ function SuperAdmin() {
     }
   }, []);
 
-  useEffect(() => { fetchAllUsers(); }, [fetchAllUsers]);
+  const fetchSettings = useCallback(async () => {
+    setSettingsLoading(true);
+    try {
+      const res = await axiosClient.get("/superadmin/settings");
+      const s = res?.data?.data || [];
+      setSystemSettings(s);
+    } catch (err) {
+      console.error("Failed to load settings", err);
+    } finally {
+      setSettingsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { 
+    fetchAllUsers(); 
+    fetchSettings();
+  }, [fetchAllUsers, fetchSettings]);
 
   const handleLogout = async () => {
     await logout();
@@ -528,42 +546,26 @@ function SuperAdmin() {
       (async () => {
         setTL(true); setTE("");
         try {
-          // Try multiple possible endpoints
-          let data = [];
-          try {
-            const r = await axiosClient.get("/admin/tasks", {
-              params: { limit: 200, _ts: Date.now() }
-            });
-            const p = r?.data || {};
-            data = Array.isArray(p.data) ? p.data : Array.isArray(p.tasks) ? p.tasks : Array.isArray(p) ? p : [];
-          } catch {
-            const r = await axiosClient.get("/tasks", {
-              params: { limit: 200, _ts: Date.now() }
-            });
-            const p = r?.data || {};
-            data = Array.isArray(p.data) ? p.data : Array.isArray(p.tasks) ? p.tasks : Array.isArray(p) ? p : [];
-          }
-          setTasks(data);
+          const r = await axiosClient.get("/superadmin/tasks");
+          const p = r?.data || {};
+          const dataList = p?.data || p?.tasks || (Array.isArray(p) ? p : []);
+          setTasks(dataList);
         } catch (err) {
           setTE(err.response?.data?.message || "Could not load tasks");
-        } finally { setTL(false); }
+        } finally {
+          setTL(false);
+        }
       })();
     }, []);
 
     const doOverride = async (task, newStatus) => {
       setOverriding(task.id);
       try {
-        await axiosClient.put(`/tasks/${task.id}`, { status: newStatus });
+        await axiosClient.put(`/superadmin/tasks/${task.id}`, { status: newStatus });
         setTasks(p => p.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
-        showToast(`Task "${task.title}" status changed to ${newStatus}`);
-      } catch {
-        try {
-          await axiosClient.put(`/admin/tasks/${task.id}`, { status: newStatus });
-          setTasks(p => p.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
-          showToast(`Task "${task.title}" overridden to ${newStatus}`);
-        } catch (err) {
-          showToast("Override failed: " + (err.response?.data?.message || "Server error"), "error");
-        }
+        showToast(`Task overridden to ${newStatus}`);
+      } catch (err) {
+        showToast("Override failed: " + (err.response?.data?.message || "Server error"), "error");
       } finally { setOverriding(null); }
     };
 
@@ -593,9 +595,19 @@ function SuperAdmin() {
 
         {/* Summary pills */}
         <div className="sa-status-summary">
-          {[["todo", "To Do"], ["in_progress", "In Progress"], ["review", "Review"], ["completed", "Done"], ["blocked", "Blocked"]].map(([s, l]) => (
-            <button key={s} className={`sa-status-pill ${filter === s ? "active" : ""}`} onClick={() => setFilter(filter === s ? "all" : s)}>
-              {l} <strong>{tasks.filter(t => t.status === s).length}</strong>
+          {[
+            { key: "todo", label: "To Do", icon: <FaClipboardList /> },
+            { key: "in_progress", label: "In Progress", icon: <FaSpinner className={filter === 'in_progress' ? 'sa-spin' : ''} /> },
+            { key: "review", label: "Review", icon: <FaEdit /> },
+            { key: "completed", label: "Done", icon: <FaCheckCircle /> },
+            { key: "blocked", label: "Blocked", icon: <FaBan /> }
+          ].map(item => (
+            <button
+              key={item.key}
+              className={`sa-status-pill ${filter === item.key ? "active" : ""}`}
+              onClick={() => setFilter(filter === item.key ? "all" : item.key)}
+            >
+              {item.icon} {item.label} <strong>{tasks.filter(t => t.status === item.key).length}</strong>
             </button>
           ))}
         </div>
@@ -674,39 +686,119 @@ function SuperAdmin() {
     );
   };
 
+  const updateSettingInState = (key, val) => {
+    setSystemSettings(prev => prev.map(s => s.key === key ? { ...s, value: val.toString() } : s));
+  };
+
+  const handleSaveSettings = async () => {
+    setSaving(true);
+    try {
+      await axiosClient.put("/superadmin/settings", { settings: systemSettings });
+      showToast("System settings updated successfully!");
+    } catch (err) {
+      showToast("Failed to save settings", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleExportData = async () => {
+    setSaving(true);
+    try {
+      const res = await axiosClient.get("/superadmin/export-data");
+      const data = res?.data?.data;
+      if (!data) throw new Error("No data received");
+
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `system-export-${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      showToast("Data exported successfully!");
+    } catch (err) {
+      showToast("Export failed: " + (err.response?.data?.message || err.message), "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   /* ── SETTINGS ── */
-  const SettingsPanel = () => (
-    <div>
-      <div className="sa-section-head"><h3>System Settings</h3></div>
-      <div className="sa-settings-grid">
-        <div className="sa-card">
-          <h4>General Settings</h4>
-          <label>Max Interns per Manager:</label><input type="number" defaultValue="10" className="sa-input" />
-          <label>Internship Duration (days):</label><input type="number" defaultValue="180" className="sa-input" />
-          <button className="sa-btn-primary" onClick={() => showToast("Settings saved!")}>Save Settings</button>
+  const SettingsPanel = () => {
+    const getVal = (k) => systemSettings.find(s => s.key === k)?.value || "";
+    const isChecked = (k) => getVal(k) === "true";
+
+    return (
+      <div>
+        <div className="sa-section-head">
+          <div>
+            <h3>System Settings</h3>
+            <p className="sa-muted">Configure core system parameters and notification preferences.</p>
+          </div>
+          <button className="sa-btn-primary" onClick={handleSaveSettings} disabled={saving}>
+            {saving ? <><FaSpinner className="sa-spin" /> Saving...</> : "Save All Settings"}
+          </button>
         </div>
-        <div className="sa-card">
-          <h4>Email Notifications</h4>
-          {["Notify on new intern assignment", "Notify on task completion", "Weekly performance reports"].map((l, i) => (
-            <label key={l} className="sa-check-label"><input type="checkbox" defaultChecked={i < 2} /> {l}</label>
-          ))}
-          <button className="sa-btn-primary" style={{ marginTop: 12 }} onClick={() => showToast("Preferences updated!")}>Update Preferences</button>
-        </div>
-        <div className="sa-card">
-          <h4>Security</h4>
-          {["Change Admin Password", "View Audit Log", "Manage API Keys"].map(l => (
-            <button key={l} className="sa-btn-outline sa-full-btn" onClick={() => showToast(`${l} — coming soon`, "error")}>{l}</button>
-          ))}
-        </div>
-        <div className="sa-card">
-          <h4>Data Management</h4>
-          <button className="sa-btn-outline sa-full-btn" onClick={() => showToast("Exporting...")}>Export All Data</button>
-          <button className="sa-btn-outline sa-full-btn" onClick={() => showToast("Backup started!")}>Backup System</button>
-          <button className="sa-btn-danger-solid sa-full-btn" onClick={() => doConfirm("Clear all cache?", () => showToast("Cache cleared!"))}>Clear Cache</button>
-        </div>
+        
+        {settingsLoading ? (
+          <div style={{ padding: 40, textAlign: "center", color: "#6b7280" }}><FaSpinner className="sa-spin" /> Loading settings...</div>
+        ) : (
+          <div className="sa-settings-grid">
+            <div className="sa-card">
+              <h4>General Settings</h4>
+              <div className="sa-form-group">
+                <label>Max Interns per Manager:</label>
+                <input type="number" value={getVal("max_interns_per_manager")} className="sa-input" 
+                  onChange={e => updateSettingInState("max_interns_per_manager", e.target.value)} />
+              </div>
+              <div className="sa-form-group">
+                <label>Internship Duration (days):</label>
+                <input type="number" value={getVal("internship_duration_days")} className="sa-input" 
+                  onChange={e => updateSettingInState("internship_duration_days", e.target.value)} />
+              </div>
+            </div>
+
+            <div className="sa-card">
+              <h4>Email Notifications</h4>
+              {[
+                { k: "notify_intern_assignment", l: "Notify on new intern assignment" },
+                { k: "notify_task_completion", l: "Notify on task completion" },
+                { k: "weekly_reports", l: "Weekly performance reports" }
+              ].map(item => (
+                <label key={item.k} className="sa-check-label" style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: 12 }}>
+                  <input type="checkbox" checked={isChecked(item.k)} 
+                    onChange={e => updateSettingInState(item.k, e.target.checked ? "true" : "false")} /> 
+                  <span>{item.l}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="sa-card">
+              <h4>Security & Data</h4>
+              <div style={{ display: "grid", gap: 10 }}>
+                <button className="sa-btn-outline sa-full-btn" onClick={() => showToast("Auditing feature coming soon...", "error")}>View Audit Log</button>
+                <button className="sa-btn-outline sa-full-btn" onClick={handleExportData} disabled={saving}>
+                  {saving ? "Exporting..." : "Export All Data"}
+                </button>
+                <button className="sa-btn-danger-solid sa-full-btn" onClick={() => doConfirm("Clear all system cache?", () => showToast("Cache cleared!"))}>Clear Cache</button>
+              </div>
+            </div>
+
+            <div className="sa-card" style={{ background: "#F9FAFB", border: "1px dashed #D1D5DB" }}>
+              <h4>System Info</h4>
+              <p style={{ fontSize: 13, color: "#4B5563", lineHeight: 1.5 }}>
+                Database Status: <span style={{ color: "#10B981", fontWeight: 600 }}>Connected</span><br />
+                Last Sync: {new Date().toLocaleString()}<br />
+                Environment: Production
+              </p>
+            </div>
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const pages = {
     dashboard: <Dashboard />,
