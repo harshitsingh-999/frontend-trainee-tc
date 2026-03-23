@@ -1,133 +1,65 @@
-import React from 'react'
-import { NavLink, useLocation, useNavigate, Navigate } from 'react-router-dom'
+import React, { useEffect, useState } from 'react'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { FaBars, FaTachometerAlt, FaUsers, FaUserPlus } from 'react-icons/fa'
 
 function Layout({ children, user, onLogout }) {
   const location = useLocation()
   const navigate = useNavigate()
+  const [collapsed, setCollapsed] = useState(false)
 
-  const isLoginPage = location.pathname === '/'
+  const isLoginPage = location.pathname === '/login'
 
-  // If not authenticated and not on login page, redirect to login
-  if (!user && !isLoginPage) {
-    return <Navigate to="/" replace />
-  }
+  useEffect(() => {
+    if (isLoginPage) {
+      document.body.classList.remove('authenticated')
+    } else {
+      document.body.classList.add('authenticated')
+    }
+    return () => {
+      document.body.classList.remove('authenticated')
+    }
+  }, [isLoginPage])
 
   if (isLoginPage) {
     return children
   }
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div
-          className="brand"
-          onClick={() => navigate('/dashboard')}
-          aria-label="TeamComputers Intern Management"
-        >
-          <div className="brand-mark">t:</div>
-          <div className="brand-text">
-            <span className="brand-name">teamComputers</span>
-            <span className="brand-subtitle">Intern Management</span>
-          </div>
+    <div className={`app-shell ${collapsed ? 'sidebar-collapsed' : ''}`}>
+
+      <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+
+        <div className="sidebar-top">
+          <button
+            className="sidebar-hamburger"
+            onClick={() => setCollapsed(!collapsed)}
+          >
+            <FaBars />
+          </button>
+          {!collapsed && (
+            <div className="brand-text">
+              <span className="brand-name">TEAMCOMPUTERS</span>
+              <span className="brand-subtitle">Intern Management</span>
+            </div>
+          )}
         </div>
 
-        
+        <nav className="nav">
+          <NavLink to="/dashboard" className={({ isActive }) => isActive ? 'nav-link nav-link-active' : 'nav-link'}>
+            <FaTachometerAlt className="nav-icon" />
+            {!collapsed && <span>Dashboard</span>}
+          </NavLink>
 
-<nav className="nav">
+          <NavLink to="/users" className={({ isActive }) => isActive ? 'nav-link nav-link-active' : 'nav-link'}>
+            <FaUsers className="nav-icon" />
+            {!collapsed && <span>User Management</span>}
+          </NavLink>
 
-  {/* Show Dashboard ONLY if NOT Intern */}
-  {user?.role !== "Intern" && (
-    <NavLink
-      to="/dashboard"
-      className={({ isActive }) =>
-        isActive ? 'nav-link nav-link-active' : 'nav-link'
-      }
-    >
-      Dashboard
-    </NavLink>
-  )}
-
-    {/* Intern Features */}
-
-{user?.role === "Intern" && (
-  <NavLink
-    to="/intern"
-    className={({ isActive }) =>
-      isActive ? 'nav-link nav-link-active' : 'nav-link'
-    }
-  >
-    Dashboard
-  </NavLink>
-)}
-
-{user?.role === "Intern" && (
-  <NavLink
-    to="/attendance"
-    className={({ isActive }) =>
-      isActive ? 'nav-link nav-link-active' : 'nav-link'
-    }
-  >
-    Attendance
-  </NavLink>
-)}
-
-{user?.role === "Intern" && (
-  <NavLink
-    to="/tasks"
-    className={({ isActive }) =>
-      isActive ? 'nav-link nav-link-active' : 'nav-link'
-    }
-  >
-    Tasks
-  </NavLink>
-)}
-
-{user?.role === "Intern" && (
-  <NavLink
-    to="/notifications"
-    className={({ isActive }) =>
-      isActive ? 'nav-link nav-link-active' : 'nav-link'
-    }
-  >
-    Notifications
-  </NavLink>
-)}
-
-{user?.role === "Intern" && (
-  <NavLink
-    to="/leave"
-    className={({ isActive }) =>
-      isActive ? 'nav-link nav-link-active' : 'nav-link'
-    }
-  >
-    Leave
-  </NavLink>
-)}
-
-    {user?.role === "Manager" && (
-  <NavLink
-    to="/manager"
-    className={({ isActive }) =>
-      isActive ? 'nav-link nav-link-active' : 'nav-link'
-    }
-  >
-    Manager Panel
-  </NavLink>
-)}
-
-  {/* Show UserForm ONLY if Intern */}
-  {user?.role === "Intern" && (
-    <NavLink
-      to="/user-form"
-      className={({ isActive }) =>
-        isActive ? 'nav-link nav-link-active' : 'nav-link'
-      }
-    >
-      User Form
-    </NavLink>
-  )}
-
-</nav>
+          <NavLink to="/user-form" className={({ isActive }) => isActive ? 'nav-link nav-link-active' : 'nav-link'}>
+            <FaUserPlus className="nav-icon" />
+            {!collapsed && <span>Add User</span>}
+          </NavLink>
+        </nav>
 
       </aside>
 
@@ -156,10 +88,7 @@ function Layout({ children, user, onLogout }) {
                 </button>
               </>
             ) : (
-              <button
-                className="btn-secondary"
-                onClick={() => navigate('/login')}
-              >
+              <button className="btn-secondary" onClick={() => navigate('/login')}>
                 Login
               </button>
             )}
@@ -173,4 +102,3 @@ function Layout({ children, user, onLogout }) {
 }
 
 export default Layout
-

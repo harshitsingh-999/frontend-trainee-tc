@@ -1,271 +1,134 @@
+import React from 'react'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 
-// import React, { useState } from "react";
-// import { Routes, Route, Navigate } from "react-router-dom";
-// import Manager from "./pages/Manager.jsx";
+import Login from './pages/Login.jsx'
+import UserForm from './pages/UserForm.jsx'
+import Dashboard from './pages/Dashboard.jsx'
+import Users from './pages/AdminUser.jsx'
+import ManagerPage from './pages/manager.jsx'
+import InternTasks from './pages/interntask.jsx'
+import Attendance from './pages/attendence.jsx'
+import MyLeaves from './pages/myleaves.jsx'
+import LayoutManager from './components/Layout_manager.jsx'
+import { useAuth, AdminRoute, SuperAdminRoute } from './context/authcontext.jsx'
+import AdminLayout from './pages/Admin/Layout.jsx'
+import SuperAdmin from './pages/SuperAdmin/SuperAdmin.jsx'
+import AdminDashboard from './pages/Admin/Dashboard.jsx'
+import UsersList from './pages/Admin/UsersList.jsx'
+import CreateUser from './pages/Admin/CreateUser.jsx'
+import ProjectProgress from './pages/ProjectProgress.jsx'
 
-// import Login from "./pages/Login.jsx";
-// import Dashboard from "./pages/Dashboard.jsx";
-// import UserForm from "./pages/UserForm.jsx";
-// import Layout from "./components/Layout.jsx";
+const SUPERADMIN_EMAILS = [
+  'superadmin@company.com',
+  'superadmin@teamcomputers.com',
+]
 
-// function App() {
-//   const [user, setUser] = useState(null);
-
-//   const handleLogin = (formValues) => {
-//     setUser({
-//       name: formValues.employeeId || "Team Member",
-//       role: formValues.role,
-//     });
-//   };
-
-//   const handleLogout = () => {
-//     setUser(null);
-//   };
-
-//   return (
-//     <Routes>
-//       {/* LOGIN ROUTE */}
-//       <Route
-//         path="/login"
-//         element={<Login onLogin={handleLogin} isAuthenticated={!!user} />}
-//       />
-
-//       {/* ROOT REDIRECT */}
-//       <Route
-//         path="/"
-//         element={
-//           <Layout user={user} onLogout={handleLogout}>
-//             <Navigate to={user ? "/dashboard" : "/login"} replace />
-//           </Layout>
-//         }
-//       />
-
-//       {/* USER FORM — ONLY INTERN */}
-//       <Route
-//         path="/user-form"
-//         element={
-//           user?.role === "Intern" ? (
-//             <Layout user={user} onLogout={handleLogout}>
-//               <UserForm />
-//             </Layout>
-//           ) : (
-//             <Navigate to="/dashboard" replace />
-//           )
-//         }
-//       />
-
-//       {/* DASHBOARD — ALL EXCEPT INTERN */}
-//       <Route
-//         path="/dashboard"
-//         element={
-//           user?.role === "Intern" ? (
-//             <Navigate to="/user-form" replace />
-//           ) : (
-//             <Layout user={user} onLogout={handleLogout}>
-//               <Dashboard user={user} />
-//             </Layout>
-//           )
-//         }
-//       />
-
-//       <Route
-//   path="/manager"
-//   element={
-//     user?.role === "Manager" ? (
-//       <Layout user={user} onLogout={handleLogout}>
-//         <Manager />
-//       </Layout>
-//     ) : (
-//       <Navigate to="/dashboard" replace />
-//     )
-//   }
-// />
-
-//       {/* FALLBACK */}
-//       <Route path="*" element={<Navigate to="/" replace />} />
-//     </Routes>
-//   );
-// }
-
-// export default App;
-
-
-
-import React, { useState } from "react";
-import { Routes, Route, Navigate } from "react-router-dom";
-
-import Login from "./pages/Login.jsx";
-import Dashboard from "./pages/Dashboard.jsx";
-import Layout from "./components/Layout.jsx";
-import Intern from "./pages/Intern.jsx";
-
-import Attendance from "./pages/Attendance.jsx";
-import Task from "./pages/Task.jsx";
-import Notifications from "./pages/Notifications.jsx";
-import Leave from "./pages/Leave.jsx";
-import Manager from "./pages/Manager.jsx";
-import UserForm from "./pages/UserForm.jsx";
-
-function App() {
-  const [user, setUser] = useState(null);
-
-  const handleLogin = (formValues) => {
-    setUser({
-      name: formValues.employeeId || "Team Member",
-      role: formValues.role,
-    });
-  };
-
-  const handleLogout = () => {
-    setUser(null);
-  };
-
-  const ProtectedRoute = ({ component: Component, ...props }) => {
-    return (
-      <Layout user={user} onLogout={handleLogout}>
-        {Component}
-      </Layout>
-    );
-  };
-
+const isSuperAdminUser = (user) => {
+  if (!user) return false
+  const roleId = Number(user.role_id)
+  const role = (user.role || '').toLowerCase().replace(/\s/g, '')
+  const email = (user.email || '').toLowerCase()
   return (
-    <Routes>
-
-      {/* Login Page */}
-      <Route path="/" element={<Login onLogin={handleLogin} isAuthenticated={!!user} />} />
-
-      {/* Dashboard - for Admin and Manager only */}
-      <Route 
-        path="/dashboard" 
-        element={
-          <ProtectedRoute 
-            component={
-              user?.role === "Intern" ? (
-                <Navigate to="/attendance" replace />
-              ) : (
-                <Dashboard user={user} />
-              )
-            }
-          />
-        } 
-      />
-
-      {/* Intern - for Interns */}
-      <Route 
-        path="/intern" 
-        element={
-          <ProtectedRoute 
-            component={
-              user?.role === "Intern" ? (
-                <Intern user={user} />
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            }
-          />
-        } 
-      />
-
-      {/* Attendance - for Interns */}
-      <Route 
-        path="/attendance" 
-        element={
-          <ProtectedRoute 
-            component={
-              user?.role === "Intern" ? (
-                <Attendance />
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            }
-          />
-        } 
-      />
-
-      {/* Tasks - for Interns */}
-      <Route 
-        path="/tasks" 
-        element={
-          <ProtectedRoute 
-            component={
-              user?.role === "Intern" ? (
-                <Task />
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            }
-          />
-        } 
-      />
-
-      {/* Notifications - for Interns */}
-      <Route 
-        path="/notifications" 
-        element={
-          <ProtectedRoute 
-            component={
-              user?.role === "Intern" ? (
-                <Notifications />
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            }
-          />
-        } 
-      />
-
-      {/* Leave - for Interns */}
-      <Route 
-        path="/leave" 
-        element={
-          <ProtectedRoute 
-            component={
-              user?.role === "Intern" ? (
-                <Leave />
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            }
-          />
-        } 
-      />
-
-      {/* Manager Panel - for Managers only */}
-      <Route 
-        path="/manager" 
-        element={
-          <ProtectedRoute 
-            component={
-              user?.role === "Manager" ? (
-                <Manager />
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            }
-          />
-        } 
-      />
-
-      {/* User Form - for Interns */}
-      <Route 
-        path="/user-form" 
-        element={
-          <ProtectedRoute 
-            component={
-              user?.role === "Intern" ? (
-                <UserForm />
-              ) : (
-                <Navigate to="/dashboard" replace />
-              )
-            }
-          />
-        } 
-      />
-
-      <Route path="*" element={<Navigate to="/" replace />} />
-
-    </Routes>
-  );
+    roleId === 0 || roleId === 5 || roleId === 6 || roleId === 7 ||
+    role === 'superadmin' || role === 'super_admin' ||
+    SUPERADMIN_EMAILS.includes(email)
+  )
 }
 
-export default App;
+const isAdminUser = (user) => {
+  if (!user) return false
+  const roleId = Number(user.role_id)
+  const role = (user.role || '').toLowerCase()
+  return (roleId === 1 || role === 'admin') && !isSuperAdminUser(user)
+}
+
+const getRedirectPath = (user) => {
+  if (!user) return '/login'
+  if (isSuperAdminUser(user)) return '/superadmin'
+  if (isAdminUser(user)) return '/admin/dashboard'
+  return '/dashboard'
+}
+
+// Uses the real AuthContext — works for Manager, Intern, Buddy roles
+function ProtectedRoute({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <div style={{ padding: 30 }}>Loading...</div>
+  if (!user) return <Navigate to="/login" replace />
+  return <LayoutManager>{children}</LayoutManager>
+}
+
+function App() {
+  // Read user from real AuthContext for redirect logic
+  const { user, login: ctxLogin, logout: ctxLogout, loading } = useAuth()
+
+  // Login handler: call AuthContext login so all consumers stay in sync
+  const handleLogin = (apiUser) => {
+    if (!apiUser) return
+    const email = (apiUser.email || '').toLowerCase()
+    const roleIdRaw =
+      apiUser.role_id !== undefined && apiUser.role_id !== null
+        ? Number(apiUser.role_id)
+        : apiUser.role?.id !== undefined
+          ? Number(apiUser.role.id)
+          : undefined
+    const roleId = Number.isNaN(roleIdRaw) ? undefined : roleIdRaw
+    const isSuperByEmail = SUPERADMIN_EMAILS.includes(email)
+    const finalRoleId = isSuperByEmail ? 0 : roleId
+    const ROLE_MAP = { 0: 'SuperAdmin', 1: 'Admin', 2: 'Manager', 3: 'Buddy', 4: 'Intern', 5: 'SuperAdmin', 6: 'SuperAdmin', 7: 'SuperAdmin' }
+    const role = ROLE_MAP[finalRoleId] || apiUser.role_name || 'User'
+    const u = { id: apiUser.id, name: apiUser.name || 'Team Member', email, role, role_id: finalRoleId }
+    ctxLogin(u)
+    return u
+  }
+
+  if (loading) return <div style={{ padding: 30 }}>Loading...</div>
+
+  return (
+    <>
+      <Routes>
+        {/* Public */}
+        <Route path="/login" element={
+          <Login
+            onLogin={handleLogin}
+            isAuthenticated={!!user}
+            currentUser={user}
+            getRedirectPath={getRedirectPath}
+          />
+        } />
+
+        {/* Root redirect */}
+        <Route path="/" element={<Navigate to={user ? getRedirectPath(user) : '/login'} replace />} />
+
+        {/* Manager / Intern / Buddy routes — all use Layout_manager */}
+        <Route path="/dashboard" element={<ProtectedRoute><Dashboard user={user} /></ProtectedRoute>} />
+        <Route path="/manager" element={<ProtectedRoute><ManagerPage /></ProtectedRoute>} />
+        <Route path="/my-tasks" element={<ProtectedRoute><InternTasks /></ProtectedRoute>} />
+        <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
+        <Route path="/my-leaves" element={<ProtectedRoute><MyLeaves /></ProtectedRoute>} />
+        <Route path="/user-form" element={<ProtectedRoute><UserForm /></ProtectedRoute>} />
+        <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
+        <Route path="/project-progress" element={<ProtectedRoute><ProjectProgress /></ProtectedRoute>} />
+
+
+        {/* Admin routes */}
+        <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+          <Route index element={<Navigate to="dashboard" replace />} />
+          <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="users" element={<UsersList />} />
+          <Route path="create-user" element={<CreateUser />} />
+        </Route>
+
+        {/* SuperAdmin routes */}
+        <Route path="/superadmin" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
+        <Route path="/superadmin/*" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
+
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+      <Toaster position="top-center" reverseOrder={false} />
+    </>
+  )
+}
+
+export default App
