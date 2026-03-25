@@ -64,7 +64,7 @@ function App() {
   const { user, login: ctxLogin, logout: ctxLogout, loading } = useAuth()
 
   // Login handler: call AuthContext login so all consumers stay in sync
-  const handleLogin = (apiUser) => {
+  const handleLogin = (apiUser, authMeta = {}) => {
     if (!apiUser) return
     const email = (apiUser.email || '').toLowerCase()
     const roleIdRaw =
@@ -79,8 +79,7 @@ function App() {
     const ROLE_MAP = { 0: 'SuperAdmin', 1: 'Admin', 2: 'Manager', 3: 'Buddy', 4: 'Intern', 5: 'SuperAdmin', 6: 'SuperAdmin', 7: 'SuperAdmin' }
     const role = ROLE_MAP[finalRoleId] || apiUser.role_name || 'User'
     const u = { id: apiUser.id, name: apiUser.name || 'Team Member', email, role, role_id: finalRoleId }
-    ctxLogin(u)
-    return u
+    return ctxLogin(u, authMeta)
   }
 
   if (loading) return <div style={{ padding: 30 }}>Loading...</div>

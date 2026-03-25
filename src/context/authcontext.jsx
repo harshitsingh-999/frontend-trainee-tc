@@ -4,6 +4,7 @@ import toast from "react-hot-toast";
 import axiosClient from "../api/axiosClient.js";
 
 const AuthContext = createContext(null);
+const SESSION_STORAGE_KEY = "authSession";
 
 const SUPERADMIN_EMAILS = [
   "superadmin@company.com",
@@ -19,21 +20,52 @@ const normalizeUser = (apiUser) => ({
   profile_picture: apiUser.profile_picture || null,
 });
 
+const normalizeSession = (source = {}) => ({
+  accessTokenExpiresAt: source.accessTokenExpiresAt || null,
+  refreshTokenExpiresAt: source.refreshTokenExpiresAt || null,
+});
+
 const persistUser = (nextUser) => {
   localStorage.setItem("user", JSON.stringify(nextUser));
+};
+
+const persistToken = (token) => {
+  if (!token) return;
+  localStorage.setItem("token", token);
+  localStorage.setItem("authToken", token);
+};
+
+const persistSession = (nextSession) => {
+  if (nextSession?.accessTokenExpiresAt || nextSession?.refreshTokenExpiresAt) {
+    localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(nextSession));
+    return;
+  }
+
+  localStorage.removeItem(SESSION_STORAGE_KEY);
 };
 
 const getPersistedToken = () =>
   localStorage.getItem("token") || localStorage.getItem("authToken");
 
-const clearPersistedUser = () => {
+const getPersistedSession = () => {
+  try {
+    const value = localStorage.getItem(SESSION_STORAGE_KEY);
+    return value ? JSON.parse(value) : null;
+  } catch {
+    return null;
+  }
+};
+
+const clearPersistedAuth = () => {
   localStorage.removeItem("user");
   localStorage.removeItem("token");
   localStorage.removeItem("authToken");
+  localStorage.removeItem(SESSION_STORAGE_KEY);
 };
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [session, setSession] = useState(getPersistedSession);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,7 +73,8 @@ export function AuthProvider({ children }) {
 
     if (!token) {
       setUser(null);
-      clearPersistedUser();
+      setSession(null);
+      clearPersistedAuth();
       setLoading(false);
       return;
     }
@@ -49,24 +82,54 @@ export function AuthProvider({ children }) {
     axiosClient
       .get("/auth/me", { params: { _ts: Date.now() } })
       .then((res) => {
-        const normalizedUser = normalizeUser(res.data.data);
+        const payload = res?.data?.data || {};
+        const normalizedUser = normalizeUser(payload);
+        const normalizedSession = normalizeSession(payload);
         setUser(normalizedUser);
+        setSession(normalizedSession);
         persistUser(normalizedUser);
+        persistSession(normalizedSession);
       })
       .catch(() => {
         setUser(null);
-        clearPersistedUser();
+        setSession(null);
+        clearPersistedAuth();
       })
       .finally(() => {
         setLoading(false);
       });
   }, []);
 
-  const login = (apiUser) => {
+  const login = (apiUser, authMeta = {}) => {
     const normalizedUser = normalizeUser(apiUser);
+    const normalizedSession = normalizeSession(authMeta);
+
+    persistToken(authMeta?.token);
     setUser(normalizedUser);
+    setSession(normalizedSession);
     persistUser(normalizedUser);
+    persistSession(normalizedSession);
     toast.success(`Welcome back, ${normalizedUser.name}!`);
+    return normalizedUser;
+  };
+
+  const refreshSession = async ({ showToast = true } = {}) => {
+    const res = await axiosClient.post("/auth/refresh");
+    const payload = res?.data?.data || {};
+    const nextUser = normalizeUser(payload?.user || payload);
+    const nextSession = normalizeSession(payload);
+
+    persistToken(payload?.token || payload?.accessToken);
+    setUser(nextUser);
+    setSession(nextSession);
+    persistUser(nextUser);
+    persistSession(nextSession);
+
+    if (showToast) {
+      toast.success("Session refreshed successfully");
+    }
+
+    return { user: nextUser, session: nextSession };
   };
 
   const logout = async () => {
@@ -77,7 +140,8 @@ export function AuthProvider({ children }) {
     }
 
     setUser(null);
-    clearPersistedUser();
+    setSession(null);
+    clearPersistedAuth();
     toast.success("Logged out successfully");
   };
 
@@ -87,7 +151,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading, updateUser }}>
+    <AuthContext.Provider value={{ user, session, login, logout, loading, updateUser, refreshSession }}>
       {children}
     </AuthContext.Provider>
   );

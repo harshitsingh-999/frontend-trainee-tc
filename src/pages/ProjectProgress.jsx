@@ -261,7 +261,7 @@ export default function ProjectProgress() {
           { label: 'Total Projects',   value: totalProjects,  color: '#003b5c' },
           { label: 'Active Projects',  value: activeProjects, color: '#2563eb' },
           { label: 'Interns Tracked',  value: totalInterns,   color: '#7c3aed' },
-          { label: 'Avg Completion',   value: `${overallAvg}%`, color: overallAvg >= 70 ? '#16a34a' : '#d97706' },
+          // { label: 'Avg Completion',   value: `${overallAvg}%`, color: overallAvg >= 70 ? '#16a34a' : '#d97706' },
         ].map(s => (
           <div key={s.label} className="stat-card">
             <div className="stat-label">{s.label}</div>

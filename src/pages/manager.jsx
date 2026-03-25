@@ -789,7 +789,7 @@ export default function Manager() {
   const TABS = [
     { key: 'overview',          label: ' Overview' },
     { key: 'interns',           label: ` My Interns (${interns.length})` },
-    { key: 'all-interns',       label: ` All Interns (${allInterns.length})` },
+    // { key: 'all-interns',       label: ` All Interns (${allInterns.length})` },
     { key: 'tasks',             label: ` Tasks (${tasks.length})` },
     { key: 'project-progress',  label: ' Project Progress' },
     { key: 'leaves',            label: ` Leaves${pendingLeaves.length ? ` (${pendingLeaves.length} pending)` : ''}` },
@@ -1017,9 +1017,9 @@ export default function Manager() {
       {/* ══════════════════════════════════════════════════════
           ALL INTERNS TAB
       ══════════════════════════════════════════════════════ */}
-      {tab === 'all-interns' && (
+      {/* {tab === 'all-interns' && (
         <AllInternsTab allInterns={allInterns} myId={user?.id} onAssigned={fetchAll} />
-      )}
+      )} */}
 
       {/* ══════════════════════════════════════════════════════
           TASKS TAB

@@ -30,8 +30,9 @@ function Login({ onLogin, isAuthenticated, currentUser, getRedirectPath }) {
       if (!apiUser) throw new Error('Login succeeded but no user data returned.')
       const resolvedUser = apiUser?.user && typeof apiUser.user === 'object' ? apiUser.user : apiUser
       const token = res?.data?.token || res?.data?.data?.token || res?.data?.data?.accessToken || res?.data?.accessToken || null
-      if (token) localStorage.setItem('token', token)
-      const processedUser = onLogin(resolvedUser)
+      const accessTokenExpiresAt = res?.data?.accessTokenExpiresAt || res?.data?.data?.accessTokenExpiresAt || null
+      const refreshTokenExpiresAt = res?.data?.refreshTokenExpiresAt || res?.data?.data?.refreshTokenExpiresAt || null
+      const processedUser = onLogin(resolvedUser, { token, accessTokenExpiresAt, refreshTokenExpiresAt })
       navigate(getRedirectPath(processedUser || resolvedUser))
     } catch (error) {
       const backendMessage = error?.response?.data?.message || error?.response?.data?.error || error?.response?.data?.msg

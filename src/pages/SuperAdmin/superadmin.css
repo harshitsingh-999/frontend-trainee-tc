@@ -743,6 +743,54 @@
   margin-bottom: 8px;
 }
 
+.sa-settings-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.sa-session-note {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(0, 177, 180, 0.18);
+  border-radius: 12px;
+  background: rgba(0, 177, 180, 0.06);
+  color: var(--sa-text);
+  font-size: 12px;
+}
+
+.sa-session-card {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid var(--sa-border);
+}
+
+.sa-session-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--sa-text);
+}
+
+.sa-session-row strong {
+  text-align: right;
+  color: var(--sa-navy);
+}
+
+.sa-session-warning {
+  color: #92400e;
+  font-weight: 700;
+}
+
 /* ── BADGES ── */
 .sa-badge {
   padding: 3px 9px;
@@ -871,6 +919,21 @@
 @media (max-width: 768px) {
   .sa-two-col {
     grid-template-columns: 1fr;
+  }
+
+  .sa-settings-actions {
+    width: 100%;
+    justify-content: stretch;
+  }
+
+  .sa-settings-actions .sa-btn-outline,
+  .sa-settings-actions .sa-btn-primary {
+    width: 100%;
+  }
+
+  .sa-session-row {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .sa-dept-row {

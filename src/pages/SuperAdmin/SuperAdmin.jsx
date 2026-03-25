@@ -223,6 +223,7 @@ function SuperAdmin() {
   const [loading, setLoading] = useState(true);
   const [apiError, setApiError] = useState("");
   const [systemSettings, setSystemSettings] = useState([]);
+  const [savedSettingsSnapshot, setSavedSettingsSnapshot] = useState([]);
   const [settingsLoading, setSettingsLoading] = useState(false);
   const [departments, setDepartments] = useState([]);   // ← moved inside component
 
@@ -232,8 +233,9 @@ function SuperAdmin() {
   const [formData, setFormData] = useState({});
   const [editTarget, setEditTarget] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [refreshingSession, setRefreshingSession] = useState(false);
 
-  const { user, logout } = useAuth();
+  const { user, session, logout, refreshSession } = useAuth();
 
   useEffect(() => {
     const h = e => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false); };
@@ -256,6 +258,18 @@ function SuperAdmin() {
     role_id: Number(u?.role_id),
     is_active: u?.is_active ?? u?.isActive ?? u?.active
   });
+
+  const serializeSettings = useCallback((settings = []) => (
+    settings
+      .map((item) => ({
+        id: item?.id ?? null,
+        key: item?.key || "",
+        value: item?.value?.toString?.() ?? "",
+        category: item?.category || "general",
+        description: item?.description || ""
+      }))
+      .sort((a, b) => a.key.localeCompare(b.key))
+  ), []);
 
   const normalizeRoleName = (val) =>
     (val || "").toString().toLowerCase().replace(/[\s_-]/g, "");
@@ -320,12 +334,13 @@ function SuperAdmin() {
       const res = await axiosClient.get("/superadmin/settings");
       const s = res?.data?.data || [];
       setSystemSettings(s);
+      setSavedSettingsSnapshot(serializeSettings(s));
     } catch (err) {
       console.error("Failed to load settings", err);
     } finally {
       setSettingsLoading(false);
     }
-  }, []);
+  }, [serializeSettings]);
 
   useEffect(() => {
     fetchAllUsers();
@@ -355,6 +370,9 @@ function SuperAdmin() {
     const key = getRoleKey(u);
     return key === "intern" || key === "buddy";
   });
+  const normalizedSettings = serializeSettings(systemSettings);
+  const hasUnsavedSettingsChanges =
+    JSON.stringify(normalizedSettings) !== JSON.stringify(savedSettingsSnapshot);
 
   /* ── NAV ── */
   const navItems = [
@@ -459,11 +477,6 @@ function SuperAdmin() {
   };
 
   /* ── LOADING STATE ── */
-  if (loading) return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", gap: 12, fontSize: 16, color: "#6b7280" }}>
-      <FaSpinner className="sa-spin" /> Loading data from database...
-    </div>
-  );
 
   /* ════════════════════════════════════════════ PAGES */
 
@@ -695,25 +708,75 @@ function SuperAdmin() {
   );
 
   const updateSettingInState = (key, val) => {
-    setSystemSettings(prev => prev.map(s => s.key === key ? { ...s, value: val.toString() } : s));
+    setSystemSettings((prev) => {
+      const nextValue = val.toString();
+      const existing = prev.some((setting) => setting.key === key);
+
+      if (existing) {
+        return prev.map((setting) => (
+          setting.key === key ? { ...setting, value: nextValue } : setting
+        ));
+      }
+
+      return [...prev, { key, value: nextValue, category: "general" }];
+    });
   };
 
-  const handleSaveSettings = async () => {
+  const handleSaveSettings = useCallback(async ({ showSuccessToast = true } = {}) => {
     setSaving(true);
     try {
-      await axiosClient.put("/superadmin/settings", { settings: systemSettings });
-      showToast("System settings updated successfully!");
+      await axiosClient.put(
+        "/superadmin/settings",
+        { settings: systemSettings },
+        { skipSuccessToast: true }
+      );
+      setSavedSettingsSnapshot(normalizedSettings);
+      if (showSuccessToast) {
+        showToast("System settings updated successfully!");
+      }
+      return true;
     } catch (err) {
       showToast("Failed to save settings", "error");
+      throw err;
     } finally {
       setSaving(false);
     }
-  };
+  }, [normalizedSettings, systemSettings]);
+
+  const handleRefreshSessionFromSettings = useCallback(async ({ autoTriggered = false } = {}) => {
+    setRefreshingSession(true);
+    try {
+      if (hasUnsavedSettingsChanges) {
+        await handleSaveSettings({ showSuccessToast: false });
+      }
+
+      await refreshSession({ showToast: false });
+      showToast(
+        autoTriggered
+          ? "Session refreshed before expiry."
+          : hasUnsavedSettingsChanges
+            ? "Settings saved and session refreshed successfully!"
+            : "Session refreshed successfully!"
+      );
+      return true;
+    } catch (err) {
+      showToast(
+        err?.response?.data?.message ||
+          (autoTriggered
+            ? "Session refresh failed before expiry. Please save your work and log in again."
+            : "Failed to refresh session"),
+        "error"
+      );
+      throw err;
+    } finally {
+      setRefreshingSession(false);
+    }
+  }, [handleSaveSettings, hasUnsavedSettingsChanges, refreshSession]);
 
   const handleExportData = async () => {
     setSaving(true);
     try {
-      const res = await axiosClient.get("/superadmin/export-data");
+      const res = await axiosClient.get("/superadmin/export-data", { skipSuccessToast: true });
       const data = res?.data?.data;
       if (!data) throw new Error("No data received");
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
@@ -732,10 +795,36 @@ function SuperAdmin() {
     }
   };
 
+  useEffect(() => {
+    if (activePage !== "settings" || !session?.accessTokenExpiresAt) {
+      return undefined;
+    }
+
+    const expiresAtMs = new Date(session.accessTokenExpiresAt).getTime();
+    if (!Number.isFinite(expiresAtMs)) {
+      return undefined;
+    }
+
+    const refreshLeadTimeMs = 60 * 1000;
+    const timeoutMs = Math.max(expiresAtMs - Date.now() - refreshLeadTimeMs, 0);
+
+    const timerId = window.setTimeout(() => {
+      handleRefreshSessionFromSettings({ autoTriggered: true }).catch(() => {});
+    }, timeoutMs);
+
+    return () => window.clearTimeout(timerId);
+  }, [activePage, handleRefreshSessionFromSettings, session?.accessTokenExpiresAt]);
+
   /* ── SETTINGS PANEL ── */
   const SettingsPanel = () => {
     const getVal = (k) => systemSettings.find(s => s.key === k)?.value || "";
     const isChecked = (k) => getVal(k) === "true";
+    const formatSessionTime = (value) => (
+      value
+        ? new Date(value).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })
+        : "Unavailable"
+    );
+    const sessionBusy = saving || refreshingSession;
 
     return (
       <div>
@@ -744,9 +833,25 @@ function SuperAdmin() {
             <h3>System Settings</h3>
             <p className="sa-muted">Configure core system parameters and notification preferences.</p>
           </div>
-          <button className="sa-btn-primary" onClick={handleSaveSettings} disabled={saving}>
-            {saving ? <><FaSpinner className="sa-spin" /> Saving...</> : "Save All Settings"}
-          </button>
+          <div className="sa-settings-actions">
+            <button className="sa-btn-outline" onClick={() => handleRefreshSessionFromSettings()} disabled={sessionBusy || settingsLoading}>
+              {refreshingSession
+                ? <><FaSpinner className="sa-spin" /> Refreshing...</>
+                : hasUnsavedSettingsChanges
+                  ? "Save & Refresh Session"
+                  : "Refresh Session"}
+            </button>
+            <button className="sa-btn-primary" onClick={() => handleSaveSettings()} disabled={sessionBusy || settingsLoading}>
+              {saving ? <><FaSpinner className="sa-spin" /> Saving...</> : "Save All Settings"}
+            </button>
+          </div>
+        </div>
+        <div className="sa-session-note">
+          <span>Access token expires: <strong>{formatSessionTime(session?.accessTokenExpiresAt)}</strong></span>
+          <span>Refresh token expires: <strong>{formatSessionTime(session?.refreshTokenExpiresAt)}</strong></span>
+          {hasUnsavedSettingsChanges && (
+            <span className="sa-session-warning">Unsaved settings will be saved before the session refreshes.</span>
+          )}
         </div>
 
         {settingsLoading ? (
@@ -784,10 +889,23 @@ function SuperAdmin() {
 
             <div className="sa-card">
               <h4>Security & Data</h4>
+              <div className="sa-session-card">
+                <div className="sa-session-row">
+                  <span>Access session</span>
+                  <strong>{formatSessionTime(session?.accessTokenExpiresAt)}</strong>
+                </div>
+                <div className="sa-session-row">
+                  <span>Refresh session</span>
+                  <strong>{formatSessionTime(session?.refreshTokenExpiresAt)}</strong>
+                </div>
+              </div>
               <div style={{ display: "grid", gap: 10 }}>
                 <button className="sa-btn-outline sa-full-btn" onClick={() => showToast("Auditing feature coming soon...", "error")}>View Audit Log</button>
-                <button className="sa-btn-outline sa-full-btn" onClick={handleExportData} disabled={saving}>
+                <button className="sa-btn-outline sa-full-btn" onClick={handleExportData} disabled={sessionBusy}>
                   {saving ? "Exporting..." : "Export All Data"}
+                </button>
+                <button className="sa-btn-primary sa-full-btn" onClick={() => handleRefreshSessionFromSettings()} disabled={sessionBusy}>
+                  {refreshingSession ? <><FaSpinner className="sa-spin" /> Refreshing...</> : "Refresh Token"}
                 </button>
                 <button className="sa-btn-danger-solid sa-full-btn" onClick={() => doConfirm("Clear all system cache?", () => showToast("Cache cleared!"))}>Clear Cache</button>
               </div>
@@ -815,6 +933,12 @@ function SuperAdmin() {
     override: <OverridePage allUsers={allUsers} showToast={showToast} />,  // top-level component with props
     settings: <div className="sa-content-inner"><SettingsPanel /></div>,
   };
+
+  if (loading) return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", gap: 12, fontSize: 16, color: "#6b7280" }}>
+      <FaSpinner className="sa-spin" /> Loading data from database...
+    </div>
+  );
 
   /* ════════════════════════════ RENDER */
   return (
@@ -854,7 +978,7 @@ function SuperAdmin() {
             <div className="sa-user-btn" onClick={() => setDropdownOpen(!dropdownOpen)}>
               <div className="sa-user-avatar">{user.name?.charAt(0)?.toUpperCase() || "S"}</div>
               <div className="sa-user-info">
-                <span className="sa-user-name">{user.email || user.name || "Super Admin"}</span>
+                <span className="sa-user-name">{user.name || user.email || "Super Admin"}</span>
                 <span className="sa-user-role">SuperAdmin</span>
               </div>
               <FaChevronDown className={`sa-chevron ${dropdownOpen ? "open" : ""}`} />
