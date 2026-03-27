@@ -6,9 +6,10 @@ import {
   FaBars, FaTachometerAlt, FaUserTie, FaUserGraduate,
   FaUserShield, FaToggleOn, FaCog, FaSignOutAlt, FaChevronDown,
   FaKey, FaClipboardList, FaBuilding, FaTimes, FaEdit, FaTrash,
-  FaBan, FaSpinner, FaCheckCircle, FaTimesCircle
+  FaBell, FaBan, FaSpinner, FaCheckCircle, FaTimesCircle
 } from "react-icons/fa";
 import axiosClient from "../../api/axiosClient";
+import { getNotifications, markAllNotificationsRead } from "../../api/api.js";
 import "./superadmin.css";
 import { useAuth } from '../../context/authcontext.jsx'
 
@@ -216,7 +217,10 @@ function SuperAdmin() {
   const [activeTab, setActiveTab] = useState("overview");
   const [collapsed, setCollapsed] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notifOpen, setNotifOpen] = useState(false);
   const dropdownRef = useRef(null);
+  const unreadCount = notifications.filter((notification) => !notification.is_read).length;
 
   /* real data from API */
   const [allUsers, setAllUsers] = useState([]);
@@ -238,9 +242,43 @@ function SuperAdmin() {
   const { user, session, logout, refreshSession } = useAuth();
 
   useEffect(() => {
-    const h = e => { if (dropdownRef.current && !dropdownRef.current.contains(e.target)) setDropdownOpen(false); };
+    const h = e => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setDropdownOpen(false);
+        setNotifOpen(false);
+      }
+    };
     document.addEventListener("mousedown", h);
     return () => document.removeEventListener("mousedown", h);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchNotifs = async () => {
+      try {
+        const res = await getNotifications();
+        const nextNotifications = Array.isArray(res?.data?.data)
+          ? res.data.data
+          : Array.isArray(res?.data)
+            ? res.data
+            : [];
+
+        if (isMounted) {
+          setNotifications(nextNotifications);
+        }
+      } catch {
+        // Keep the layout usable even if notifications fail to load.
+      }
+    };
+
+    fetchNotifs();
+    const intervalId = window.setInterval(fetchNotifs, 60000);
+
+    return () => {
+      isMounted = false;
+      window.clearInterval(intervalId);
+    };
   }, []);
 
   /* ── FETCH ALL USERS ── */
@@ -359,8 +397,29 @@ function SuperAdmin() {
   }, [fetchAllUsers, fetchSettings]);
 
   const handleLogout = async () => {
+    setDropdownOpen(false);
+    setNotifOpen(false);
     await logout();
     navigate('/login');
+  };
+
+  const handleNotificationsToggle = async () => {
+    const nextOpen = !notifOpen;
+    setNotifOpen(nextOpen);
+    setDropdownOpen(false);
+
+    if (!nextOpen || unreadCount === 0) {
+      return;
+    }
+
+    try {
+      await markAllNotificationsRead();
+      setNotifications((prev) =>
+        prev.map((notification) => ({ ...notification, is_read: true }))
+      );
+    } catch {
+      // Notification reads can fail without blocking the layout.
+    }
   };
 
   /* ── FILTERED LISTS ── */
@@ -975,7 +1034,102 @@ function SuperAdmin() {
             </div>
           </div>
           <div className="sa-topbar-right" ref={dropdownRef}>
-            <div className="sa-user-btn" onClick={() => setDropdownOpen(!dropdownOpen)}>
+            <div style={{ position: "relative" }}>
+              <button
+                type="button"
+                onClick={handleNotificationsToggle}
+                style={{
+                  background: "none",
+                  border: "none",
+                  cursor: "pointer",
+                  position: "relative",
+                  padding: 6
+                }}
+              >
+                <FaBell size={20} color="#374151" />
+                {unreadCount > 0 && (
+                  <span
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      right: 0,
+                      background: "#ef4444",
+                      color: "#fff",
+                      borderRadius: "50%",
+                      fontSize: 10,
+                      width: 16,
+                      height: 16,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontWeight: 700
+                    }}
+                  >
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
+              </button>
+              {notifOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    right: 0,
+                    top: 36,
+                    width: 320,
+                    background: "#fff",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: 10,
+                    boxShadow: "0 4px 20px rgba(0,0,0,0.12)",
+                    zIndex: 9999,
+                    maxHeight: 400,
+                    overflowY: "auto"
+                  }}
+                >
+                  <div
+                    style={{
+                      padding: "12px 16px",
+                      fontWeight: 700,
+                      borderBottom: "1px solid #f3f4f6",
+                      fontSize: 14
+                    }}
+                  >
+                    Notifications
+                  </div>
+                  {notifications.length === 0 ? (
+                    <p style={{ padding: 16, color: "#6b7280", fontSize: 13 }}>No notifications.</p>
+                  ) : (
+                    notifications.map((notification) => {
+                      const createdAt = notification.createdAt || notification.created_at;
+                      const timestamp = createdAt
+                        ? new Date(createdAt).toLocaleString()
+                        : "Unknown time";
+
+                      return (
+                        <div
+                          key={notification.id}
+                          style={{
+                            padding: "10px 16px",
+                            borderBottom: "1px solid #f9fafb",
+                            background: notification.is_read ? "#fff" : "#eff6ff"
+                          }}
+                        >
+                          <div style={{ fontWeight: 600, fontSize: 13 }}>{notification.title}</div>
+                          <div style={{ fontSize: 12, color: "#6b7280", marginTop: 2 }}>{notification.message}</div>
+                          <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 4 }}>{timestamp}</div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+            <div
+              className="sa-user-btn"
+              onClick={() => {
+                setNotifOpen(false);
+                setDropdownOpen((open) => !open);
+              }}
+            >
               <div className="sa-user-avatar">{user.name?.charAt(0)?.toUpperCase() || "S"}</div>
               <div className="sa-user-info">
                 <span className="sa-user-name">{user.name || user.email || "Super Admin"}</span>

@@ -80,7 +80,7 @@ function BalanceCard({ type, data }) {
 
 
 // ─── Main Page ─────────────────────────────────────────────────────────────────
-export default function MyLeaves() {
+export default function MyLeaves({ onLeaveChanged }) {
   const [tab, setTab] = useState('apply')
   const [leaves, setLeaves] = useState([])
   const [balance, setBalance] = useState(null)
@@ -163,6 +163,7 @@ export default function MyLeaves() {
       notify(res.data.message)
       setLeaveDate(''); setLeaveReason(''); setLeaveType('casual')
       await fetchAll()
+      await Promise.resolve(onLeaveChanged?.())
       setTab('requests')
     } catch (err) {
       notify(err.response?.data?.message || 'Failed to apply for leave', 'error')
@@ -175,6 +176,7 @@ export default function MyLeaves() {
       const res = await api.delete(`/intern/leaves/${id}`)
       notify(res.data.message)
       await fetchAll()
+      await Promise.resolve(onLeaveChanged?.())
     } catch (err) {
       notify(err.response?.data?.message || 'Failed to cancel leave', 'error')
     } finally { setCancelId(null) }

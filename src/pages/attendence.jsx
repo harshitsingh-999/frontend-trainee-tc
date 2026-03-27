@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import api from '../api/login_api.js'
 import { useAuth } from '../context/authcontext.jsx'
 import MyLeaves from './myleaves.jsx'
@@ -66,7 +66,7 @@ function InternAttendance() {
   const [busy, setBusy] = useState(false)
   const [activeTab, setActiveTab] = useState('attendance')
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true)
     try {
       const [todayRes, historyRes] = await Promise.all([
@@ -80,11 +80,13 @@ function InternAttendance() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   useEffect(() => {
-    fetchAll()
-  }, [])
+    if (activeTab === 'attendance') {
+      fetchAll()
+    }
+  }, [activeTab, fetchAll])
 
   const handleCheckIn = async () => {
     setBusy(true)
@@ -93,7 +95,7 @@ function InternAttendance() {
     try {
       const res = await api.post('/attendance/checkin')
       setActionMsg(res.data.message)
-      fetchAll()
+      await fetchAll()
     } catch (err) {
       setActionErr(err.response?.data?.message || 'Check-in failed')
     } finally {
@@ -108,7 +110,7 @@ function InternAttendance() {
     try {
       const res = await api.post('/attendance/checkout')
       setActionMsg(res.data.message)
-      fetchAll()
+      await fetchAll()
     } catch (err) {
       setActionErr(err.response?.data?.message || 'Check-out failed')
     } finally {
@@ -269,7 +271,7 @@ function InternAttendance() {
       )}
 
       {/* ── LEAVES TAB ── */}
-      {activeTab === 'leaves' && <MyLeaves />}
+      {activeTab === 'leaves' && <MyLeaves onLeaveChanged={fetchAll} />}
 
     </div>
   )

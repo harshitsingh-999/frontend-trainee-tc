@@ -204,6 +204,11 @@
 /* ── USER DROPDOWN ── */
 .sa-topbar-right {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-shrink: 0;
 }
 
 .sa-user-info {

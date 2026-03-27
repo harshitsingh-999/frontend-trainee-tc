@@ -1,5 +1,7 @@
 // import axios from "axios";
 import axiosClient from "./axiosClient";
+
+
 const api = axiosClient;
 // const api = axios.create({
 //   baseURL: import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api/v1",
@@ -74,6 +76,22 @@ export const forgotPassword = (email) =>
 
 export const resetPassword = (token, password) =>
   api.post("/auth/reset-password", { token, password });
+
+export const uploadInternDocument = (formData) =>
+  api.post('/documents/upload', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+
+export const submitDailyReport = (data) => api.post('/intern/daily-report', data);
+export const getMyDailyReports = () => api.get('/intern/daily-reports');
+export const getInternDailyReports = () => api.get('/manager/daily-reports');
+export const acknowledgeDailyReport = (id) => api.patch(`/manager/daily-reports/${id}/acknowledge`);
+
+export const getNotifications = () => api.get('/notifications');
+export const markNotificationRead = (id) => api.patch(`/notifications/${id}/read`);
+export const markAllNotificationsRead = () => api.patch('/notifications/read-all');
+
+export const getMyDocuments = () => api.get('/documents/my');
+export const getAllDocuments = (status) => api.get('/documents/all', { params: { status } });
+export const reviewDocument = (id, data) => api.patch(`/documents/${id}/review`, data);
 
 export default api;
 

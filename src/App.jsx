@@ -21,6 +21,7 @@ import ProjectProgress from './pages/ProjectProgress.jsx'
 import Calendar from "./pages/Calender.jsx";
 import ForgotPassword from './pages/Auth/forgotpassword.jsx'
 import ResetPassword from './pages/Auth/resetpassword.jsx'
+import DailyReport from './pages/dailyreports.jsx'
 
 const SUPERADMIN_EMAILS = [
   'superadmin@company.com',
@@ -102,7 +103,7 @@ function App() {
         <Route path="/calendar" element={<ProtectedRoute><Calendar /></ProtectedRoute>} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
-
+        <Route path="/daily-report" element={<ProtectedRoute><DailyReport /></ProtectedRoute>} />
 
         {/* Root redirect */}
         <Route path="/" element={<Navigate to={user ? getRedirectPath(user) : '/login'} replace />} />
