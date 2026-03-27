@@ -69,6 +69,12 @@ export const loginUser = (email, password) =>
 
 export const logoutUser = () => api.post("/auth/logout");
 
+export const forgotPassword = (email) =>
+  api.post("/auth/forgot-password", { email });
+
+export const resetPassword = (token, password) =>
+  api.post("/auth/reset-password", { token, password });
+
 export default api;
 
 

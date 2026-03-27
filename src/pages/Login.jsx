@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
-import { Navigate, useNavigate } from 'react-router-dom'
+// import { Navigate, useNavigate } from 'react-router-dom'
+import { Navigate, useNavigate, Link } from 'react-router-dom'
 import api from '../api/api'
 
 function Login({ onLogin, isAuthenticated, currentUser, getRedirectPath }) {
@@ -82,6 +83,11 @@ function Login({ onLogin, isAuthenticated, currentUser, getRedirectPath }) {
               required
               autoComplete="new-password"
             />
+          </div>
+          <div style={{ textAlign: 'right', marginTop: -8, marginBottom: 8 }}>
+          <Link to="/forgot-password" style={{ fontSize: 13, color: '#2563eb' }}>
+          Forgot password?
+          </Link>
           </div>
           {errorMsg && <p className="error-text">{errorMsg}</p>}
           <button type="submit" className="btn-primary" disabled={isSubmitting}>
