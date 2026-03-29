@@ -124,11 +124,11 @@ function Dashboard() {
   }
 
   // Work log data
-  const workLog = [
-    { name: 'Ananya Sharma', role: 'Intern', date: '24 Feb 2026', hours: '7.5', summary: 'Worked on UI for intern dashboard and bug fixes.' },
-    { name: 'Rohan Singh', role: 'Trainee', date: '24 Feb 2026', hours: '6', summary: 'Prepared daily MIS reports and data clean-up.' },
-    { name: 'Mehak Kaur', role: 'Intern', date: '23 Feb 2026', hours: '8', summary: 'Shadowed client meetings and documented minutes.' },
-  ]
+  // const workLog = [
+  //   { name: 'Ananya Sharma', role: 'Intern', date: '24 Feb 2026', hours: '7.5', summary: 'Worked on UI for intern dashboard and bug fixes.' },
+  //   { name: 'Rohan Singh', role: 'Trainee', date: '24 Feb 2026', hours: '6', summary: 'Prepared daily MIS reports and data clean-up.' },
+  //   { name: 'Mehak Kaur', role: 'Intern', date: '23 Feb 2026', hours: '8', summary: 'Shadowed client meetings and documented minutes.' },
+  // ]
 
   return (
     <div className="dashboard">
@@ -323,6 +323,119 @@ function Dashboard() {
           </div>
         </section> */}
 
+        {/* ── INTERN MY TASKS ── */}
+{isIntern && (
+  <section className="card" style={{ marginBottom: 0 }}>
+    <div className="card-header">
+      <div>
+        <h3>My Tasks</h3>
+        <p>Tasks assigned to you by your manager.</p>
+      </div>
+      <button
+        onClick={() => navigate('/my-tasks')}
+        style={{
+          padding: '8px 16px', borderRadius: 8,
+          border: '1px solid #00b1b4', background: 'transparent',
+          color: '#00b1b4', cursor: 'pointer', fontSize: 13, fontWeight: 600
+        }}
+      >
+        View All →
+      </button>
+    </div>
+
+    {/* Stats row */}
+    <div className="stats-grid" style={{ marginBottom: 20 }}>
+      {[
+        { label: 'Total',       value: myTasks.length,                                                              color: '#003b5c' },
+        { label: 'In Progress', value: myTasks.filter(t => t.status === 'in_progress').length,                      color: '#2563eb' },
+        { label: 'Completed',   value: myTasks.filter(t => t.status === 'completed').length,                        color: '#16a34a' },
+        { label: 'Overdue',     value: myTasks.filter(t => new Date(t.due_date) < new Date() && t.status !== 'completed').length, color: '#dc2626' },
+      ].map(s => (
+        <div key={s.label} className="stat-card">
+          <div className="stat-label">{s.label}</div>
+          <div className="stat-value" style={{ color: s.value > 0 && s.label === 'Overdue' ? '#dc2626' : s.color }}>
+            {s.value}
+          </div>
+        </div>
+      ))}
+    </div>
+
+    {/* Task list */}
+    {myTasks.length === 0 ? (
+      <div style={{ textAlign: 'center', padding: '40px 0', color: '#9ca3af' }}>
+        <div style={{ fontSize: 40, marginBottom: 8 }}>📋</div>
+        <p>No tasks assigned yet.</p>
+      </div>
+    ) : (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        {myTasks.slice(0, 5).map(task => {
+          const isOverdue = new Date(task.due_date) < new Date() && task.status !== 'completed'
+          const statusColors = {
+            todo:        { bg: '#f1f5f9', color: '#475569' },
+            in_progress: { bg: '#eff6ff', color: '#2563eb' },
+            review:      { bg: '#faf5ff', color: '#7c3aed' },
+            completed:   { bg: '#f0fdf4', color: '#16a34a' },
+            blocked:     { bg: '#fef2f2', color: '#dc2626' },
+            rejected:    { bg: '#fef2f2', color: '#dc2626' },
+          }
+          const s = statusColors[task.status] || statusColors.todo
+          return (
+            <div key={task.id} style={{
+              border: '1px solid #e2e8f0',
+              borderLeft: `4px solid ${task.status === 'completed' ? '#16a34a' : isOverdue ? '#dc2626' : '#00b1b4'}`,
+              borderRadius: 10, padding: '14px 16px',
+              background: '#fafafa',
+              display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', flexWrap: 'wrap', gap: 10,
+            }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, color: '#003b5c', fontSize: 14, marginBottom: 4 }}>
+                  {task.title}
+                  {isOverdue && (
+                    <span style={{ marginLeft: 8, fontSize: 11, background: '#fef2f2', color: '#dc2626', border: '1px solid #fecaca', borderRadius: 5, padding: '1px 7px', fontWeight: 600 }}>
+                      ⚠ Overdue
+                    </span>
+                  )}
+                </div>
+                <div style={{ fontSize: 12, color: '#6b7280' }}>
+                  Due: <strong style={{ color: isOverdue ? '#dc2626' : '#374151' }}>{task.due_date || '—'}</strong>
+                  {task.tech_stack && <span style={{ marginLeft: 12 }}>🛠 {task.tech_stack}</span>}
+                </div>
+                {/* Progress bar */}
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 120, height: 6, background: '#e5e7eb', borderRadius: 99, overflow: 'hidden' }}>
+                    <div style={{ height: '100%', background: '#00b1b4', borderRadius: 99, width: `${task.completion_percentage || 0}%` }} />
+                  </div>
+                  <span style={{ fontSize: 11, color: '#6b7280' }}>{task.completion_percentage || 0}%</span>
+                </div>
+              </div>
+              <span style={{
+                background: s.bg, color: s.color,
+                borderRadius: 6, padding: '3px 12px',
+                fontSize: 12, fontWeight: 600, textTransform: 'capitalize',
+                whiteSpace: 'nowrap',
+              }}>
+                {task.status?.replace('_', ' ')}
+              </span>
+            </div>
+          )
+        })}
+        {myTasks.length > 5 && (
+          <button
+            onClick={() => navigate('/my-tasks')}
+            style={{
+              padding: '10px', borderRadius: 8, border: '1px dashed #e2e8f0',
+              background: 'transparent', color: '#6b7280', cursor: 'pointer', fontSize: 13,
+            }}
+          >
+            + {myTasks.length - 5} more tasks — View All
+          </button>
+        )}
+      </div>
+    )}
+  </section>
+)}
+
         {/* Intern Charts */}
         {isIntern && chartsReady && ChartComponents && (
           <section className="card">
@@ -362,7 +475,7 @@ function Dashboard() {
         )}
 
         {/* Work Log */}
-        <section className="card">
+        {/* <section className="card">
           <div className="card-header">
             <div>
               <h3>Intern & Trainee Work Log</h3>
@@ -399,7 +512,7 @@ function Dashboard() {
               </tbody>
             </table>
           </div>
-        </section>
+        </section> */}
 
         {/* Internship Timeline */}
         {/* <section className="card">
@@ -421,7 +534,7 @@ function Dashboard() {
         </section> */}
 
         {/* Manager View */}
-        {isManager && (
+        {/* {isManager && (
           <section className="card">
             <div className="card-header">
               <div><h3>Manager View</h3><p>Track interns mapped to you and their buddies.</p></div>
@@ -450,7 +563,18 @@ function Dashboard() {
               </li>
             </ul>
           </section>
-        )}
+        )} */}
+        {isManager && (
+        <section className="card" style={{ cursor: 'pointer' }} onClick={() => navigate('/manager')}>
+         <div className="card-header">
+         <div><h3>My Interns</h3><p>Interns currently under your supervision.</p></div>
+         </div>
+         <div style={{ fontSize: 48, fontWeight: 800, color: '#00b1b4', padding: '12px 0' }}>
+         {interns.length}
+          </div>
+         <p style={{ color: '#6b7280', fontSize: 13 }}>Click to manage tasks, timelines & worklogs →</p>
+         </section>
+)}
 
         {/* Admin Panel */}
         {role === 'Admin' && (

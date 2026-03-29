@@ -165,7 +165,7 @@ function AdminLayout() {
             <div className="sa-user-btn" onClick={() => setDropdownOpen((open) => !open)}>
               <div className="sa-user-avatar">{renderAvatar('A')}</div>
               <div className="sa-user-info">
-                <span className="sa-user-name">{user?.email || user?.name || 'Admin'}</span>
+                <span className="sa-user-name">{user?.name || user?.email || 'Admin'}</span>
                 <span className="sa-user-role">Administrator</span>
               </div>
               <FaChevronDown className={`sa-chevron ${dropdownOpen ? 'open' : ''}`} />

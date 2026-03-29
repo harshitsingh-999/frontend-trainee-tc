@@ -69,13 +69,13 @@ const NAV_LINKS = [
     icon: <FaCalendarAlt />,
     roles: [1, 2, 3, 4],
   },
-  {
-    to: '/manager',
-    label: 'Manager',
-    subtitle: 'Manage interns, tasks, and daily team coordination.',
-    icon: <FaUserTie />,
-    roles: [1, 2],
-  },
+  // {
+  //   to: '/manager',
+  //   label: 'Manager',
+  //   subtitle: 'Manage interns, tasks, and daily team coordination.',
+  //   icon: <FaUserTie />,
+  //   roles: [1, 2],
+  // },
   {
     to: '/project-progress',
     label: 'Project Progress',
@@ -225,7 +225,7 @@ function LayoutManager({ children }) {
               <div className="sa-user-btn" onClick={() => setDropdownOpen((open) => !open)}>
                 <div className="sa-user-avatar">{renderAvatar('T')}</div>
                 <div className="sa-user-info">
-                  <span className="sa-user-name">{user?.email || user?.name || 'Team Member'}</span>
+                  <span className="sa-user-name">{user?.name || user?.email || 'Team Member'}</span>
                   <span className="sa-user-role">{roleLabel}</span>
                 </div>
                 <FaChevronDown className={`sa-chevron ${dropdownOpen ? 'open' : ''}`} />
