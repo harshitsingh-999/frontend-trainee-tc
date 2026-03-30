@@ -23,6 +23,7 @@ import Calendar from "./pages/Calender.jsx";
 import ForgotPassword from './pages/Auth/forgotpassword.jsx'
 import ResetPassword from './pages/Auth/resetpassword.jsx'
 import DailyReport from './pages/dailyreports.jsx'
+import ManagerDailyReports from './pages/ManagerDailyReports.jsx'
 import Notification from './pages/notification.jsx'
 
 const SUPERADMIN_EMAILS = [
@@ -106,6 +107,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/daily-report" element={<ProtectedRoute><DailyReport /></ProtectedRoute>} />
+        <Route path="/manager/daily-reports" element={<ProtectedRoute><ManagerDailyReports /></ProtectedRoute>} />
         <Route path="/notifications" element={<ProtectedRoute><Notification /></ProtectedRoute>} />
 
         {/* Root redirect */}

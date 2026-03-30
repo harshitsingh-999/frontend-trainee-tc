@@ -410,6 +410,8 @@ function SuperAdmin() {
           ["interns", "Interns", <FaUserGraduate />],
           ["managers", "Managers", <FaUserTie />],
           ["admins2", "Admins", <FaUserShield />],
+          ["departments", "Departments", <FaBuilding />],
+          ["roles", "Roles", <FaKey />],
           ["settings", "Settings", <FaCog />],
         ].map(([k, l, icon]) => (
           <button key={k} className={`sa-tab ${activeTab === k ? "active" : ""}`} onClick={() => setActiveTab(k)}>
@@ -465,6 +467,8 @@ function SuperAdmin() {
         {activeTab === "interns" && <UsersTable list={interns} roleId={ROLE.INTERN} title="Interns & Buddies" />}
         {activeTab === "managers" && <UsersTable list={managers} roleId={ROLE.MANAGER} title="Managers" />}
         {activeTab === "admins2" && <UsersTable list={admins} roleId={ROLE.ADMIN} title="Admins" />}
+        {activeTab === "departments" && <DepartmentMaster />}
+        {activeTab === "roles" && <RoleMaster />}
         {activeTab === "settings" && <SettingsPanel />}
       </div>
     </div>
@@ -749,6 +753,271 @@ function SuperAdmin() {
     } finally {
       setExporting(false);
     }
+  };
+
+
+  /* ── DEPARTMENT MASTER ── */
+  const DepartmentMaster = () => {
+    const [depts, setDepts] = React.useState([]);
+    const [loading, setLoading] = React.useState(true);
+    const [showForm, setShowForm] = React.useState(false);
+    const [editItem, setEditItem] = React.useState(null);
+    const [form, setForm] = React.useState({ dept_name: '', description: '' });
+    const [saving, setSaving] = React.useState(false);
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await axiosClient.get('/superadmin/departments');
+        const raw = res?.data?.data || res?.data || [];
+        setDepts(Array.isArray(raw) ? raw : []);
+      } catch { toast.error('Failed to load departments'); }
+      finally { setLoading(false); }
+    };
+    React.useEffect(() => { load(); }, []);
+
+    const openAdd = () => { setEditItem(null); setForm({ dept_name: '', description: '' }); setShowForm(true); };
+    const openEdit = (d) => { setEditItem(d); setForm({ dept_name: d.dept_name, description: d.description || '' }); setShowForm(true); };
+    const closeForm = () => { setShowForm(false); setEditItem(null); };
+
+    const handleSave = async () => {
+      if (!form.dept_name.trim()) return toast.error('Department name is required');
+      setSaving(true);
+      try {
+        if (editItem) {
+          await axiosClient.put(`/superadmin/departments/${editItem.id}`, form);
+          toast.success('Department updated!');
+        } else {
+          await axiosClient.post('/superadmin/departments', form);
+          toast.success('Department created!');
+        }
+        closeForm(); load();
+      } catch (e) { toast.error(e?.response?.data?.message || 'Failed to save'); }
+      finally { setSaving(false); }
+    };
+
+    const handleDelete = (id, name) => {
+      doConfirm(`Delete department "${name}"? This cannot be undone.`, async () => {
+        try {
+          await axiosClient.delete(`/superadmin/departments/${id}`);
+          toast.success('Department deleted'); load();
+        } catch (e) { toast.error(e?.response?.data?.message || 'Failed to delete'); }
+      });
+    };
+
+    return (
+      <div>
+        <div className="sa-section-head">
+          <div>
+            <h3>Department Master</h3>
+            <p style={{ color: '#6b7280', fontSize: 13, margin: '4px 0 0' }}>Manage departments dynamically — add, edit or remove</p>
+          </div>
+          <button className="sa-btn-primary" onClick={openAdd}>+ Add Department</button>
+        </div>
+
+        {showForm && (
+          <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: 24, marginBottom: 20 }}>
+            <h4 style={{ margin: '0 0 16px', color: '#111827' }}>{editItem ? 'Edit Department' : 'New Department'}</h4>
+            <div style={{ display: 'grid', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>DEPARTMENT NAME *</label>
+                <input className="sa-input" value={form.dept_name}
+                  onChange={e => setForm(p => ({ ...p, dept_name: e.target.value }))}
+                  placeholder="e.g. Engineering, HR, Finance" />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>DESCRIPTION</label>
+                <input className="sa-input" value={form.description}
+                  onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                  placeholder="Brief description (optional)" />
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="sa-btn-primary" onClick={handleSave} disabled={saving}>
+                  {saving ? 'Saving...' : editItem ? 'Update' : 'Create'}
+                </button>
+                <button className="sa-btn-outline" onClick={closeForm}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#9ca3af' }}><FaSpinner className="sa-spin" /> Loading...</div>
+        ) : depts.length === 0 ? (
+          <div style={{ padding: 48, textAlign: 'center', border: '2px dashed #e5e7eb', borderRadius: 12, color: '#9ca3af' }}>
+            <FaBuilding style={{ fontSize: 32, marginBottom: 10 }} />
+            <p>No departments yet. Click "+ Add Department" to create one.</p>
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 14 }}>
+            {depts.map(d => (
+              <div key={d.id} style={{ background: '#fff', border: '1px solid #e5e7eb', borderRadius: 12, padding: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 38, height: 38, borderRadius: 10, background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
+                      <FaBuilding />
+                    </div>
+                    <div>
+                      <div style={{ fontWeight: 700, fontSize: 14, color: '#111827' }}>{d.dept_name}</div>
+                      <div style={{ fontSize: 12, color: '#9ca3af' }}>ID: {d.id}</div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button className="sa-btn-sm" onClick={() => openEdit(d)} title="Edit"><FaEdit /></button>
+                    <button className="sa-btn-sm" style={{ color: '#dc2626' }} onClick={() => handleDelete(d.id, d.dept_name)} title="Delete"><FaTrash /></button>
+                  </div>
+                </div>
+                {d.description && <p style={{ fontSize: 13, color: '#6b7280', margin: 0, paddingTop: 8, borderTop: '1px solid #f3f4f6' }}>{d.description}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  /* ── ROLE MASTER ── */
+  const RoleMaster = () => {
+    const [roles, setRoles] = React.useState([]);
+    const [loading, setLoading] = React.useState(true);
+    const [showForm, setShowForm] = React.useState(false);
+    const [editItem, setEditItem] = React.useState(null);
+    const [form, setForm] = React.useState({ role_name: '', description: '' });
+    const [saving, setSaving] = React.useState(false);
+
+    const CORE_ROLE_IDS = [1, 2, 3, 4, 5];
+    const CORE_ROLE_LABELS = { 1: 'Admin', 2: 'Manager', 3: 'Buddy', 4: 'Intern', 5: 'SuperAdmin' };
+
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await axiosClient.get('/superadmin/roles');
+        const raw = res?.data?.data || res?.data || [];
+        setRoles(Array.isArray(raw) ? raw : []);
+      } catch { toast.error('Failed to load roles'); }
+      finally { setLoading(false); }
+    };
+    React.useEffect(() => { load(); }, []);
+
+    const openAdd = () => { setEditItem(null); setForm({ role_name: '', description: '' }); setShowForm(true); };
+    const openEdit = (r) => { setEditItem(r); setForm({ role_name: r.role_name, description: r.description || '' }); setShowForm(true); };
+    const closeForm = () => { setShowForm(false); setEditItem(null); };
+
+    const handleSave = async () => {
+      if (!form.role_name.trim()) return toast.error('Role name is required');
+      setSaving(true);
+      try {
+        if (editItem) {
+          await axiosClient.put(`/superadmin/roles/${editItem.id}`, form);
+          toast.success('Role updated!');
+        } else {
+          await axiosClient.post('/superadmin/roles', form);
+          toast.success('Role created!');
+        }
+        closeForm(); load();
+      } catch (e) { toast.error(e?.response?.data?.message || 'Failed to save'); }
+      finally { setSaving(false); }
+    };
+
+    const handleDelete = (id, name) => {
+      if (CORE_ROLE_IDS.includes(Number(id))) return toast.error('Cannot delete core system roles.');
+      doConfirm(`Delete role "${name}"?`, async () => {
+        try {
+          await axiosClient.delete(`/superadmin/roles/${id}`);
+          toast.success('Role deleted'); load();
+        } catch (e) { toast.error(e?.response?.data?.message || 'Failed to delete'); }
+      });
+    };
+
+    const ROLE_COLORS = {
+      1: { bg: '#fef3c7', color: '#92400e' },
+      2: { bg: '#dbeafe', color: '#1d4ed8' },
+      3: { bg: '#d1fae5', color: '#065f46' },
+      4: { bg: '#ede9fe', color: '#6d28d9' },
+      5: { bg: '#fee2e2', color: '#991b1b' },
+    };
+
+    return (
+      <div>
+        <div className="sa-section-head">
+          <div>
+            <h3>Role Master</h3>
+            <p style={{ color: '#6b7280', fontSize: 13, margin: '4px 0 0' }}>Manage user roles — core system roles are protected</p>
+          </div>
+          <button className="sa-btn-primary" onClick={openAdd}>+ Add Role</button>
+        </div>
+
+        {showForm && (
+          <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: 12, padding: 24, marginBottom: 20 }}>
+            <h4 style={{ margin: '0 0 16px', color: '#111827' }}>{editItem ? 'Edit Role' : 'New Role'}</h4>
+            <div style={{ display: 'grid', gap: 14 }}>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>ROLE NAME *</label>
+                <input className="sa-input" value={form.role_name}
+                  onChange={e => setForm(p => ({ ...p, role_name: e.target.value }))}
+                  placeholder="e.g. HR Executive, Tech Lead" />
+              </div>
+              <div>
+                <label style={{ fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 6 }}>DESCRIPTION</label>
+                <input className="sa-input" value={form.description}
+                  onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+                  placeholder="What this role does (optional)" />
+              </div>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button className="sa-btn-primary" onClick={handleSave} disabled={saving}>
+                  {saving ? 'Saving...' : editItem ? 'Update' : 'Create'}
+                </button>
+                <button className="sa-btn-outline" onClick={closeForm}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div style={{ background: '#fffbeb', border: '1px solid #fde68a', borderRadius: 10, padding: '10px 16px', marginBottom: 20, fontSize: 13, color: '#92400e', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <FaKey /> Core roles (Admin, Manager, Buddy, Intern, SuperAdmin) are protected and cannot be deleted.
+        </div>
+
+        {loading ? (
+          <div style={{ padding: 40, textAlign: 'center', color: '#9ca3af' }}><FaSpinner className="sa-spin" /> Loading...</div>
+        ) : (
+          <table className="sa-table">
+            <thead>
+              <tr><th>#</th><th>Role Name</th><th>Description</th><th>Type</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+              {roles.map(r => {
+                const isCore = CORE_ROLE_IDS.includes(Number(r.id));
+                const style = ROLE_COLORS[r.id] || { bg: '#f3f4f6', color: '#374151' };
+                return (
+                  <tr key={r.id}>
+                    <td>{r.id}</td>
+                    <td>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: style.bg, color: style.color, padding: '3px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600 }}>
+                        <FaKey style={{ fontSize: 10 }} /> {r.role_name}
+                      </span>
+                    </td>
+                    <td style={{ color: '#6b7280', fontSize: 13 }}>{r.description || <span style={{ color: '#d1d5db' }}>—</span>}</td>
+                    <td>
+                      <span style={{ fontSize: 12, padding: '2px 10px', borderRadius: 20, background: isCore ? '#fee2e2' : '#f0fdf4', color: isCore ? '#991b1b' : '#16a34a', fontWeight: 600 }}>
+                        {isCore ? '🔒 Core' : '✦ Custom'}
+                      </span>
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: 6 }}>
+                        <button className="sa-btn-sm" onClick={() => openEdit(r)} title="Edit"><FaEdit /></button>
+                        {!isCore && (
+                          <button className="sa-btn-sm" style={{ color: '#dc2626' }} onClick={() => handleDelete(r.id, r.role_name)} title="Delete"><FaTrash /></button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
+    );
   };
 
   /* ── SETTINGS PANEL ── */

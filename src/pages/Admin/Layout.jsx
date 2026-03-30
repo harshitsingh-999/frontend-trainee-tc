@@ -297,14 +297,24 @@ function AdminLayout() {
                         ? new Date(createdAt).toLocaleString()
                         : 'Unknown time'
 
+                      const handleNotifClick = () => {
+                        setNotifOpen(false)
+                        if (notification.link) navigate(notification.link)
+                      }
+
                       return (
                         <div
                           key={notification.id}
+                          onClick={handleNotifClick}
                           style={{
                             padding: '10px 16px',
                             borderBottom: '1px solid #f9fafb',
                             background: notification.is_read ? '#fff' : '#eff6ff',
+                            cursor: notification.link ? 'pointer' : 'default',
+                            transition: 'background 0.15s',
                           }}
+                          onMouseEnter={e => { if (notification.link) e.currentTarget.style.background = '#dbeafe' }}
+                          onMouseLeave={e => { e.currentTarget.style.background = notification.is_read ? '#fff' : '#eff6ff' }}
                         >
                           <div style={{ fontWeight: 600, fontSize: 13 }}>
                             {notification.title}
@@ -315,6 +325,11 @@ function AdminLayout() {
                           <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
                             {timestamp}
                           </div>
+                          {notification.link && (
+                            <div style={{ fontSize: 11, color: '#3b82f6', marginTop: 2, fontWeight: 500 }}>
+                              Tap to open →
+                            </div>
+                          )}
                         </div>
                       )
                     })
