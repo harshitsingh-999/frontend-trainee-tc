@@ -6,7 +6,8 @@ import {
   FaBars, FaTachometerAlt, FaUserTie, FaUserGraduate,
   FaUserShield, FaToggleOn, FaCog, FaSignOutAlt, FaChevronDown,
   FaKey, FaClipboardList, FaBuilding, FaTimes, FaEdit, FaTrash,
-  FaBell, FaBan, FaSpinner, FaCheckCircle, FaTimesCircle
+  FaBell, FaBan, FaSpinner, FaCheckCircle, FaTimesCircle,
+  FaChartPie, FaUsers
 } from "react-icons/fa";
 import axiosClient from "../../api/axiosClient";
 import { getNotifications, markAllNotificationsRead } from "../../api/api.js";
@@ -50,166 +51,6 @@ function Confirm({ msg, onYes, onNo }) {
   );
 }
 
-/* ── OVERRIDE PAGE — must be top-level so hooks are valid ── */
-function OverridePage({ allUsers, showToast }) {
-  const [tasks, setTasks] = useState([]);
-  const [tasksLoading, setTL] = useState(true);
-  const [tasksError, setTE] = useState("");
-  const [filter, setFilter] = useState("all");
-  const [overriding, setOverriding] = useState(null);
-
-  useEffect(() => {
-    (async () => {
-      setTL(true); setTE("");
-      try {
-        const r = await axiosClient.get("/superadmin/tasks");
-        const p = r?.data || {};
-        const dataList = p?.data || p?.tasks || (Array.isArray(p) ? p : []);
-        setTasks(dataList);
-      } catch (err) {
-        setTE(err.response?.data?.message || "Could not load tasks");
-      } finally {
-        setTL(false);
-      }
-    })();
-  }, []);
-
-  const doOverride = async (task, newStatus) => {
-    setOverriding(task.id);
-    try {
-      await axiosClient.put(`/superadmin/tasks/${task.id}`, { status: newStatus });
-      setTasks(p => p.map(t => t.id === task.id ? { ...t, status: newStatus } : t));
-      showToast(`Task overridden to ${newStatus}`);
-    } catch (err) {
-      showToast("Override failed: " + (err.response?.data?.message || "Server error"), "error");
-    } finally { setOverriding(null); }
-  };
-
-  const filtered = filter === "all" ? tasks : tasks.filter(t => t.status === filter);
-  const priorityColor = { low: "sa-badge-gray", medium: "sa-badge-yellow", high: "sa-badge-red", critical: "sa-badge-red" };
-  const statusColor = { todo: "sa-badge-gray", in_progress: "sa-badge-blue", review: "sa-badge-yellow", completed: "sa-badge-green", blocked: "sa-badge-red" };
-
-  return (
-    <div>
-      <div className="sa-page-head">
-        <div>
-          <h2>Override Decisions</h2>
-          <p>Review and override task statuses assigned by managers — {tasks.length} total tasks</p>
-        </div>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <select className="sa-filter-select" value={filter} onChange={e => setFilter(e.target.value)}>
-            <option value="all">All Statuses</option>
-            <option value="todo">To Do</option>
-            <option value="in_progress">In Progress</option>
-            <option value="review">In Review</option>
-            <option value="completed">Completed</option>
-            <option value="blocked">Blocked</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="sa-status-summary">
-        {[
-          { key: "todo", label: "To Do", icon: <FaClipboardList /> },
-          { key: "in_progress", label: "In Progress", icon: <FaSpinner className={filter === 'in_progress' ? 'sa-spin' : ''} /> },
-          { key: "review", label: "Review", icon: <FaEdit /> },
-          { key: "completed", label: "Done", icon: <FaCheckCircle /> },
-          { key: "blocked", label: "Blocked", icon: <FaBan /> }
-        ].map(item => (
-          <button
-            key={item.key}
-            className={`sa-status-pill ${filter === item.key ? "active" : ""}`}
-            onClick={() => setFilter(filter === item.key ? "all" : item.key)}
-          >
-            {item.icon} {item.label} <strong>{tasks.filter(t => t.status === item.key).length}</strong>
-          </button>
-        ))}
-      </div>
-
-      {tasksLoading && (
-        <div style={{ padding: 30, textAlign: "center", color: "#6b7280" }}>
-          <FaSpinner className="sa-spin" /> Loading tasks from database...
-        </div>
-      )}
-      {tasksError && (
-        <div className="sa-api-error">⚠ {tasksError}</div>
-      )}
-      {!tasksLoading && !tasksError && filtered.length === 0 && (
-        <div className="sa-empty">No tasks found{filter !== "all" ? ` with status "${filter}"` : ""}.</div>
-      )}
-
-      {!tasksLoading && filtered.length > 0 && (
-        <table className="sa-table">
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Task Title</th>
-              <th>Assigned To</th>
-              <th>Assigned By</th>
-              <th>Priority</th>
-              <th>Current Status</th>
-              <th>Due Date</th>
-              <th>Progress</th>
-              <th>Override To</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.map((t, i) => (
-              <tr key={t.id}>
-                <td className="sa-muted">{i + 1}</td>
-                <td>
-                  <div style={{ fontWeight: 600, color: "#1f2933" }}>{t.title}</div>
-                  {t.description && (
-                    <div style={{ fontSize: 11, color: "#9ca3af", marginTop: 2 }}>
-                      {t.description.substring(0, 60)}{t.description.length > 60 ? "…" : ""}
-                    </div>
-                  )}
-                </td>
-                <td>
-                  {allUsers.find(u => u.id === t.assigned_to)?.name ||
-                    allUsers.find(u => u.id === t.assigned_to)?.full_name ||
-                    <span className="sa-muted">ID: {t.assigned_to}</span>}
-                </td>
-                <td>
-                  {allUsers.find(u => u.id === t.assigned_by)?.name ||
-                    allUsers.find(u => u.id === t.assigned_by)?.full_name ||
-                    <span className="sa-muted">ID: {t.assigned_by}</span>}
-                </td>
-                <td><span className={`sa-badge ${priorityColor[t.priority] || "sa-badge-gray"}`}>{t.priority || "—"}</span></td>
-                <td><span className={`sa-badge ${statusColor[t.status] || "sa-badge-gray"}`}>{t.status?.replace("_", " ") || "—"}</span></td>
-                <td style={{ fontSize: 12 }}>{t.due_date ? new Date(t.due_date).toLocaleDateString("en-IN") : "—"}</td>
-                <td>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    <div className="sa-mini-prog">
-                      <div className="sa-mini-prog-fill" style={{ width: (t.completion_percentage || 0) + "%" }} />
-                    </div>
-                    <span style={{ fontSize: 11, color: "#6b7280" }}>{t.completion_percentage || 0}%</span>
-                  </div>
-                </td>
-                <td>
-                  <select
-                    className="sa-override-select"
-                    value={t.status || "todo"}
-                    disabled={overriding === t.id}
-                    onChange={e => doOverride(t, e.target.value)}
-                  >
-                    <option value="todo">To Do</option>
-                    <option value="in_progress">In Progress</option>
-                    <option value="review">Review</option>
-                    <option value="completed">Completed</option>
-                    <option value="blocked">Blocked</option>
-                  </select>
-                  {overriding === t.id && <FaSpinner className="sa-spin" style={{ marginLeft: 6, fontSize: 11 }} />}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
-  );
-}
-
 /* ══════════════════════════════════════════════ */
 function SuperAdmin() {
   const navigate = useNavigate();
@@ -237,9 +78,9 @@ function SuperAdmin() {
   const [formData, setFormData] = useState({});
   const [editTarget, setEditTarget] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [refreshingSession, setRefreshingSession] = useState(false);
+  const [exporting, setExporting] = useState(false);
 
-  const { user, session, logout, refreshSession } = useAuth();
+  const { user, session, logout } = useAuth();
 
   useEffect(() => {
     const h = e => {
@@ -439,7 +280,6 @@ function SuperAdmin() {
     { key: "admins", icon: <FaUserShield />, label: "Admin Management" },
     { key: "managers", icon: <FaUserTie />, label: "Manager Control" },
     { key: "interns", icon: <FaUserGraduate />, label: "Intern Management" },
-    { key: "override", icon: <FaToggleOn />, label: "Override Decisions" },
     { key: "settings", icon: <FaCog />, label: "System Settings" },
   ];
 
@@ -540,56 +380,84 @@ function SuperAdmin() {
   /* ════════════════════════════════════════════ PAGES */
 
   const Dashboard = () => (
-    <div>
+    <div className="sa-dashboard-page">
       <div className="sa-page-head">
-        <div><h2>Super Admin Dashboard</h2><p>Manage interns, managers, and system-wide operations</p></div>
-        <button className="sa-btn-outline" onClick={fetchAllUsers}>↻ Refresh</button>
+        <div><h2>Super Admin Dashboard</h2></div>
+        <button className="sa-btn-outline" onClick={fetchAllUsers}>Refresh</button>
       </div>
-      {apiError && <div className="sa-api-error">⚠ {apiError}</div>}
+      {apiError && <div className="sa-api-error">Warning: {apiError}</div>}
 
-      <div className="sa-stats-row">
+      <div className="sa-stats-row sa-dashboard-stats">
         {[
-          { label: "Total Interns", value: interns.length, color: "#3B82F6" },
-          { label: "Active Managers", value: managers.filter(m => m.is_active).length, color: "#10B981" },
-          { label: "Active Admins", value: admins.filter(a => a.is_active).length, color: "#F59E0B" },
-          { label: "Total Users", value: allUsers.length, color: "#EF4444" },
-        ].map((s, i) => (
-          <div key={i} className="sa-stat-card" style={{ borderLeft: `4px solid ${s.color}` }}>
-            <div className="sa-stat-label">{s.label.toUpperCase()}</div>
+          { label: "Interns & Buddies", value: interns.length, icon: <FaUserGraduate /> },
+          { label: "Active Managers", value: managers.filter(m => m.is_active).length, icon: <FaUserTie /> },
+          { label: "Active Admins", value: admins.filter(a => a.is_active).length, icon: <FaUserShield /> },
+          { label: "Total Users", value: allUsers.length, icon: <FaUsers /> },
+        ].map((s) => (
+          <div key={s.label} className="sa-stat-card sa-dashboard-stat">
+            <div className="sa-stat-top">
+              <div className="sa-stat-icon">{s.icon}</div>
+              <div className="sa-stat-label">{s.label}</div>
+            </div>
             <div className="sa-stat-value">{s.value}</div>
           </div>
         ))}
       </div>
 
-      <div className="sa-tabs">
-        {[["overview", "📋 Overview"], ["interns", "👤 Interns"], ["managers", "🏢 Managers"], ["admins2", "🛡 Admins"], ["settings", "⚙️ Settings"]].map(([k, l]) => (
-          <button key={k} className={`sa-tab ${activeTab === k ? "active" : ""}`} onClick={() => setActiveTab(k)}>{l}</button>
+      <div className="sa-tabs sa-dashboard-tabs">
+        {[
+          ["overview", "Overview", <FaChartPie />],
+          ["interns", "Interns", <FaUserGraduate />],
+          ["managers", "Managers", <FaUserTie />],
+          ["admins2", "Admins", <FaUserShield />],
+          ["settings", "Settings", <FaCog />],
+        ].map(([k, l, icon]) => (
+          <button key={k} className={`sa-tab ${activeTab === k ? "active" : ""}`} onClick={() => setActiveTab(k)}>
+            <span className="sa-tab-icon">{icon}</span>
+            <span>{l}</span>
+          </button>
         ))}
       </div>
 
       <div className="sa-tab-content">
         {activeTab === "overview" && (
-          <div>
-            <div className="sa-section-head"><h3>System Overview</h3></div>
-            <div className="sa-two-col">
-              <div className="sa-card">
-                <h4>👥 User Distribution by Role</h4>
-                {[["Admins (role_id=1)", admins.length], ["Managers (role_id=2)", managers.length], ["Interns/Buddies (role 3-4)", interns.length]].map(([l, v]) => (
-                  <div key={l} className="sa-perf-row">
-                    <span style={{ width: 200 }}>{l}</span>
-                    <div className="sa-prog-bar"><div className="sa-prog-fill" style={{ width: Math.min((v / (allUsers.length || 1)) * 100, 100) + "%" }} /></div>
-                    <span className="sa-muted">{v}</span>
-                  </div>
-                ))}
+          <div className="sa-overview-grid">
+            <div className="sa-card sa-overview-card">
+              <div className="sa-card-head">
+                <span className="sa-card-head-icon"><FaChartPie /></span>
+                <div>
+                  <h4>Team Distribution</h4>
+                  <p>Current user breakdown across the platform</p>
+                </div>
               </div>
-              <div className="sa-card">
-                <h4>📦 Quick Summary</h4>
-                <div className="sa-dist-item"><strong>Total Users:</strong> {allUsers.length}</div>
-                <div className="sa-dist-item"><strong>Active Users:</strong> {allUsers.filter(u => u.is_active).length}</div>
-                <div className="sa-dist-item"><strong>Inactive Users:</strong> {allUsers.filter(u => !u.is_active).length}</div>
-                <div className="sa-dist-item"><strong>Admins:</strong> {admins.length}</div>
-                <div className="sa-dist-item"><strong>Managers:</strong> {managers.length}</div>
-                <div className="sa-dist-item"><strong>Interns:</strong> {interns.length}</div>
+              {[
+                ["Administrators", admins.length, <FaUserShield />],
+                ["Managers", managers.length, <FaUserTie />],
+                ["Interns & Buddies", interns.length, <FaUserGraduate />],
+              ].map(([label, value, icon]) => (
+                <div key={label} className="sa-role-row">
+                  <span className="sa-role-label">{icon}<span>{label}</span></span>
+                  <div className="sa-prog-bar"><div className="sa-prog-fill" style={{ width: Math.min((value / (allUsers.length || 1)) * 100, 100) + "%" }} /></div>
+                  <span className="sa-role-value">{value}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="sa-card sa-overview-card">
+              <div className="sa-card-head">
+                <span className="sa-card-head-icon"><FaClipboardList /></span>
+                <div>
+                  <h4>Workspace Summary</h4>
+                  <p>Quick visibility into active and inactive accounts</p>
+                </div>
+              </div>
+              <div className="sa-summary-list">
+                <div className="sa-summary-item"><span><FaUsers /> Total Users</span><strong>{allUsers.length}</strong></div>
+                <div className="sa-summary-item"><span><FaCheckCircle /> Active Users</span><strong>{allUsers.filter(u => u.is_active).length}</strong></div>
+                <div className="sa-summary-item"><span><FaTimesCircle /> Inactive Users</span><strong>{allUsers.filter(u => !u.is_active).length}</strong></div>
+                <div className="sa-summary-item"><span><FaUserShield /> Admins</span><strong>{admins.length}</strong></div>
+                <div className="sa-summary-item"><span><FaUserTie /> Managers</span><strong>{managers.length}</strong></div>
+                <div className="sa-summary-item"><span><FaUserGraduate /> Interns & Buddies</span><strong>{interns.length}</strong></div>
               </div>
             </div>
           </div>
@@ -602,7 +470,7 @@ function SuperAdmin() {
     </div>
   );
 
-  /* ── REUSABLE USER TABLE ── */
+  /* -- REUSABLE USER TABLE -- */
   const UsersTable = ({ list, roleId, title }) => (
     <div>
       <div className="sa-section-head">
@@ -613,7 +481,7 @@ function SuperAdmin() {
         <div className="sa-empty">No {title.toLowerCase()} found in database.</div>
       ) : (
         <table className="sa-table">
-          <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Department</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>{list.map((u, i) => (
             <tr key={u.id}>
               <td className="sa-muted">{i + 1}</td>
@@ -642,25 +510,16 @@ function SuperAdmin() {
 
   /* ── ADMINS PAGE ── */
   const AdminsPage = () => (
-    <div>
+    <div className="sa-admins-page">
       <div className="sa-page-head">
-        <div><h2>Admin Management</h2><p>Manage department admins — real data from your database</p></div>
+        <div><h2>Admin Management</h2></div>
         <button className="sa-btn-primary" onClick={() => openAdd("Admin")}>+ Add New Admin</button>
       </div>
-      <div className="sa-dept-row">
-        {departments.map(dept => (
-          <div key={dept} className="sa-dept-card">
-            <FaBuilding className="sa-dept-icon" />
-            <div className="sa-dept-name">{dept}</div>
-            <div className="sa-dept-count">{admins.filter(a => (a.department || a.dept || "").toLowerCase() === dept.toLowerCase()).length} admin(s)</div>
-          </div>
-        ))}
-      </div>
       {admins.length === 0 ? (
-        <div className="sa-empty">No admins (role_id=1) found in your database.</div>
+        <div className="sa-empty">No admins found in your database.</div>
       ) : (
         <table className="sa-table">
-          <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Department</th><th>Status</th><th>Actions</th></tr></thead>
+          <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
           <tbody>{admins.map((a, i) => (
             <tr key={a.id}>
               <td className="sa-muted">{i + 1}</td>
@@ -689,13 +548,13 @@ function SuperAdmin() {
 
   /* ── MANAGERS PAGE ── */
   const ManagersPage = () => (
-    <div>
+    <div className="sa-managers-page">
       <div className="sa-page-head">
         <div><h2>Manager Control</h2><p>All managers from your database</p></div>
         <button className="sa-btn-primary" onClick={() => openAdd("Manager")}>+ Add Manager</button>
       </div>
       {managers.length === 0 ? (
-        <div className="sa-empty">No managers (role_id=2) found in your database.</div>
+        <div className="sa-empty">No managers found in your database.</div>
       ) : (
         <div className="sa-mgr-grid">
           {managers.map(m => (
@@ -727,11 +586,11 @@ function SuperAdmin() {
   const InternsPage = () => (
     <div>
       <div className="sa-page-head">
-        <div><h2>Intern Management</h2><p>All interns & buddies from your database</p></div>
+        <div><h2>Intern Management</h2></div>
         <button className="sa-btn-primary" onClick={() => openAdd("Intern")}>+ Add Intern</button>
       </div>
       {interns.length === 0 ? (
-        <div className="sa-empty">No interns (role_id=3 or 4) found in your database.</div>
+        <div className="sa-empty">No interns or buddies found in your database.</div>
       ) : (
         <table className="sa-table">
           <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Department</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
@@ -802,77 +661,95 @@ function SuperAdmin() {
     }
   }, [normalizedSettings, systemSettings]);
 
-  const handleRefreshSessionFromSettings = useCallback(async ({ autoTriggered = false } = {}) => {
-    setRefreshingSession(true);
-    try {
-      if (hasUnsavedSettingsChanges) {
-        await handleSaveSettings({ showSuccessToast: false });
-      }
+  const escapePdfText = (value) => value
+    .replace(/\\/g, "\\\\")
+    .replace(/\(/g, "\\(")
+    .replace(/\)/g, "\\)");
 
-      await refreshSession({ showToast: false });
-      showToast(
-        autoTriggered
-          ? "Session refreshed before expiry."
-          : hasUnsavedSettingsChanges
-            ? "Settings saved and session refreshed successfully!"
-            : "Session refreshed successfully!"
-      );
-      return true;
-    } catch (err) {
-      showToast(
-        err?.response?.data?.message ||
-          (autoTriggered
-            ? "Session refresh failed before expiry. Please save your work and log in again."
-            : "Failed to refresh session"),
-        "error"
-      );
-      throw err;
-    } finally {
-      setRefreshingSession(false);
+  const buildPdfBlob = (title, payload) => {
+    const lines = [
+      title,
+      `Generated: ${new Date().toLocaleString("en-IN")}`,
+      "",
+      ...JSON.stringify(payload, null, 2).split("\n"),
+    ];
+
+    const linesPerPage = 40;
+    const pages = [];
+    for (let i = 0; i < lines.length; i += linesPerPage) {
+      pages.push(lines.slice(i, i + linesPerPage));
     }
-  }, [handleSaveSettings, hasUnsavedSettingsChanges, refreshSession]);
+
+    const objects = [];
+    const offsets = [];
+    const addObject = (content) => {
+      objects.push(content);
+      return objects.length;
+    };
+
+    const catalogId = addObject("");
+    const pagesId = addObject("");
+    const fontId = addObject("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
+    const pageIds = [];
+
+    pages.forEach((pageLines) => {
+      const streamLines = ["BT", "/F1 10 Tf"];
+      let y = 780;
+
+      pageLines.forEach((line) => {
+        streamLines.push(`1 0 0 1 40 ${y} Tm (${escapePdfText(line)}) Tj`);
+        y -= 18;
+      });
+
+      streamLines.push("ET");
+      const stream = streamLines.join("\n");
+      const contentId = addObject(`<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`);
+      const pageId = addObject(`<< /Type /Page /Parent ${pagesId} 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${fontId} 0 R >> >> /Contents ${contentId} 0 R >>`);
+      pageIds.push(pageId);
+    });
+
+    objects[catalogId - 1] = `<< /Type /Catalog /Pages ${pagesId} 0 R >>`;
+    objects[pagesId - 1] = `<< /Type /Pages /Count ${pageIds.length} /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] >>`;
+
+    let pdf = "%PDF-1.4\n";
+    objects.forEach((object, index) => {
+      offsets[index + 1] = pdf.length;
+      pdf += `${index + 1} 0 obj\n${object}\nendobj\n`;
+    });
+
+    const xrefOffset = pdf.length;
+    pdf += `xref\n0 ${objects.length + 1}\n`;
+    pdf += "0000000000 65535 f \n";
+    for (let i = 1; i <= objects.length; i += 1) {
+      pdf += `${String(offsets[i]).padStart(10, "0")} 00000 n \n`;
+    }
+    pdf += `trailer\n<< /Size ${objects.length + 1} /Root ${catalogId} 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`;
+
+    return new Blob([pdf], { type: "application/pdf" });
+  };
 
   const handleExportData = async () => {
-    setSaving(true);
+    setExporting(true);
     try {
       const res = await axiosClient.get("/superadmin/export-data", { skipSuccessToast: true });
       const data = res?.data?.data;
       if (!data) throw new Error("No data received");
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const blob = buildPdfBlob("System Data Export", data);
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", `system-export-${new Date().toISOString().split('T')[0]}.json`);
+      link.setAttribute("download", `system-export-${new Date().toISOString().split('T')[0]}.pdf`);
       document.body.appendChild(link);
       link.click();
       link.parentNode.removeChild(link);
-      showToast("Data exported successfully!");
+      window.URL.revokeObjectURL(url);
+      showToast("Data exported successfully as PDF!");
     } catch (err) {
       showToast("Export failed: " + (err.response?.data?.message || err.message), "error");
     } finally {
-      setSaving(false);
+      setExporting(false);
     }
   };
-
-  useEffect(() => {
-    if (activePage !== "settings" || !session?.accessTokenExpiresAt) {
-      return undefined;
-    }
-
-    const expiresAtMs = new Date(session.accessTokenExpiresAt).getTime();
-    if (!Number.isFinite(expiresAtMs)) {
-      return undefined;
-    }
-
-    const refreshLeadTimeMs = 60 * 1000;
-    const timeoutMs = Math.max(expiresAtMs - Date.now() - refreshLeadTimeMs, 0);
-
-    const timerId = window.setTimeout(() => {
-      handleRefreshSessionFromSettings({ autoTriggered: true }).catch(() => {});
-    }, timeoutMs);
-
-    return () => window.clearTimeout(timerId);
-  }, [activePage, handleRefreshSessionFromSettings, session?.accessTokenExpiresAt]);
 
   /* ── SETTINGS PANEL ── */
   const SettingsPanel = () => {
@@ -883,33 +760,25 @@ function SuperAdmin() {
         ? new Date(value).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })
         : "Unavailable"
     );
-    const sessionBusy = saving || refreshingSession;
+    const sessionBusy = saving || exporting;
 
     return (
       <div>
         <div className="sa-section-head">
           <div>
             <h3>System Settings</h3>
-            <p className="sa-muted">Configure core system parameters and notification preferences.</p>
           </div>
           <div className="sa-settings-actions">
-            <button className="sa-btn-outline" onClick={() => handleRefreshSessionFromSettings()} disabled={sessionBusy || settingsLoading}>
-              {refreshingSession
-                ? <><FaSpinner className="sa-spin" /> Refreshing...</>
-                : hasUnsavedSettingsChanges
-                  ? "Save & Refresh Session"
-                  : "Refresh Session"}
-            </button>
             <button className="sa-btn-primary" onClick={() => handleSaveSettings()} disabled={sessionBusy || settingsLoading}>
               {saving ? <><FaSpinner className="sa-spin" /> Saving...</> : "Save All Settings"}
             </button>
           </div>
         </div>
         <div className="sa-session-note">
-          <span>Access token expires: <strong>{formatSessionTime(session?.accessTokenExpiresAt)}</strong></span>
-          <span>Refresh token expires: <strong>{formatSessionTime(session?.refreshTokenExpiresAt)}</strong></span>
+          <span>Session expires: <strong>{formatSessionTime(session?.refreshTokenExpiresAt || session?.accessTokenExpiresAt)}</strong></span>
+          <span>Session duration: <strong>1 day</strong></span>
           {hasUnsavedSettingsChanges && (
-            <span className="sa-session-warning">Unsaved settings will be saved before the session refreshes.</span>
+            <span className="sa-session-warning">You have unsaved settings changes.</span>
           )}
         </div>
 
@@ -947,26 +816,17 @@ function SuperAdmin() {
             </div>
 
             <div className="sa-card">
-              <h4>Security & Data</h4>
+              <h4>Session & Data</h4>
               <div className="sa-session-card">
                 <div className="sa-session-row">
-                  <span>Access session</span>
-                  <strong>{formatSessionTime(session?.accessTokenExpiresAt)}</strong>
-                </div>
-                <div className="sa-session-row">
-                  <span>Refresh session</span>
-                  <strong>{formatSessionTime(session?.refreshTokenExpiresAt)}</strong>
+                  <span>Current session ends</span>
+                  <strong>{formatSessionTime(session?.refreshTokenExpiresAt || session?.accessTokenExpiresAt)}</strong>
                 </div>
               </div>
               <div style={{ display: "grid", gap: 10 }}>
-                <button className="sa-btn-outline sa-full-btn" onClick={() => showToast("Auditing feature coming soon...", "error")}>View Audit Log</button>
                 <button className="sa-btn-outline sa-full-btn" onClick={handleExportData} disabled={sessionBusy}>
-                  {saving ? "Exporting..." : "Export All Data"}
+                  {exporting ? "Exporting..." : "Export All Data as PDF"}
                 </button>
-                <button className="sa-btn-primary sa-full-btn" onClick={() => handleRefreshSessionFromSettings()} disabled={sessionBusy}>
-                  {refreshingSession ? <><FaSpinner className="sa-spin" /> Refreshing...</> : "Refresh Token"}
-                </button>
-                <button className="sa-btn-danger-solid sa-full-btn" onClick={() => doConfirm("Clear all system cache?", () => showToast("Cache cleared!"))}>Clear Cache</button>
               </div>
             </div>
 
@@ -989,7 +849,6 @@ function SuperAdmin() {
     admins: <AdminsPage />,
     managers: <ManagersPage />,
     interns: <InternsPage />,
-    override: <OverridePage allUsers={allUsers} showToast={showToast} />,  // top-level component with props
     settings: <div className="sa-content-inner"><SettingsPanel /></div>,
   };
 
@@ -1030,7 +889,6 @@ function SuperAdmin() {
           <div className="sa-topbar-left">
             <div>
               <h1 className="sa-topbar-title">Intern Management System</h1>
-              <p className="sa-topbar-sub">Track interns, buddies, and managers in one place.</p>
             </div>
           </div>
           <div className="sa-topbar-right" ref={dropdownRef}>
@@ -1132,8 +990,7 @@ function SuperAdmin() {
             >
               <div className="sa-user-avatar">{user.name?.charAt(0)?.toUpperCase() || "S"}</div>
               <div className="sa-user-info">
-                <span className="sa-user-name">{user.name || user.email || "Super Admin"}</span>
-                <span className="sa-user-role">SuperAdmin</span>
+                <span className="sa-user-name">{user.name || user.email || "User"}</span>
               </div>
               <FaChevronDown className={`sa-chevron ${dropdownOpen ? "open" : ""}`} />
             </div>
@@ -1142,9 +999,8 @@ function SuperAdmin() {
                 <div className="sa-dropdown-header">
                   <div className="sa-dd-avatar">{user.name?.charAt(0)?.toUpperCase() || "S"}</div>
                   <div>
-                    <div className="sa-dd-name">{user.name || "Super Admin"}</div>
-                    <div className="sa-dd-email">{user.email || "superadmin@company.com"}</div>
-                    <span className="sa-dd-badge">SuperAdmin</span>
+                    <div className="sa-dd-name">{user.name || user.email || "User"}</div>
+                    {user.email && <div className="sa-dd-email">{user.email}</div>}
                   </div>
                 </div>
                 <hr className="sa-dd-divider" />
@@ -1197,3 +1053,5 @@ function SuperAdmin() {
 }
 
 export default SuperAdmin;
+
+

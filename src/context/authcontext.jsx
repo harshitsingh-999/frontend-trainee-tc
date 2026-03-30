@@ -5,6 +5,7 @@ import axiosClient from "../api/axiosClient.js";
 
 const AuthContext = createContext(null);
 const SESSION_STORAGE_KEY = "authSession";
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 const SUPERADMIN_EMAILS = [
   "superadmin@company.com",
@@ -20,10 +21,29 @@ const normalizeUser = (apiUser) => ({
   profile_picture: apiUser.profile_picture || null,
 });
 
-const normalizeSession = (source = {}) => ({
-  accessTokenExpiresAt: source.accessTokenExpiresAt || null,
-  refreshTokenExpiresAt: source.refreshTokenExpiresAt || null,
-});
+const toIsoString = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+};
+
+const createDefaultSessionExpiry = () => new Date(Date.now() + ONE_DAY_MS).toISOString();
+
+const normalizeSession = (source = {}, fallbackSession = null) => {
+  const refreshTokenExpiresAt =
+    toIsoString(source.refreshTokenExpiresAt) ||
+    toIsoString(fallbackSession?.refreshTokenExpiresAt) ||
+    createDefaultSessionExpiry();
+
+  const accessTokenExpiresAt =
+    toIsoString(source.accessTokenExpiresAt) ||
+    refreshTokenExpiresAt;
+
+  return {
+    accessTokenExpiresAt,
+    refreshTokenExpiresAt,
+  };
+};
 
 const persistUser = (nextUser) => {
   localStorage.setItem("user", JSON.stringify(nextUser));
@@ -70,6 +90,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const token = getPersistedToken();
+    const persistedSession = getPersistedSession();
 
     if (!token) {
       setUser(null);
@@ -84,7 +105,7 @@ export function AuthProvider({ children }) {
       .then((res) => {
         const payload = res?.data?.data || {};
         const normalizedUser = normalizeUser(payload);
-        const normalizedSession = normalizeSession(payload);
+        const normalizedSession = normalizeSession(payload, persistedSession);
         setUser(normalizedUser);
         setSession(normalizedSession);
         persistUser(normalizedUser);
@@ -117,7 +138,7 @@ export function AuthProvider({ children }) {
     const res = await axiosClient.post("/auth/refresh");
     const payload = res?.data?.data || {};
     const nextUser = normalizeUser(payload?.user || payload);
-    const nextSession = normalizeSession(payload);
+    const nextSession = normalizeSession(payload, session);
 
     persistToken(payload?.token || payload?.accessToken);
     setUser(nextUser);
@@ -149,6 +170,30 @@ export function AuthProvider({ children }) {
     setUser(updatedUser);
     persistUser(updatedUser);
   };
+
+  useEffect(() => {
+    const expiresAt = session?.refreshTokenExpiresAt;
+    if (!expiresAt) return undefined;
+
+    const expiresAtMs = new Date(expiresAt).getTime();
+    if (!Number.isFinite(expiresAtMs)) return undefined;
+
+    const timeoutMs = expiresAtMs - Date.now();
+    const expireSession = () => {
+      setUser(null);
+      setSession(null);
+      clearPersistedAuth();
+      toast.error("Session expired. Please log in again.");
+    };
+
+    if (timeoutMs <= 0) {
+      expireSession();
+      return undefined;
+    }
+
+    const timerId = window.setTimeout(expireSession, timeoutMs);
+    return () => window.clearTimeout(timerId);
+  }, [session?.refreshTokenExpiresAt]);
 
   return (
     <AuthContext.Provider value={{ user, session, login, logout, loading, updateUser, refreshSession }}>

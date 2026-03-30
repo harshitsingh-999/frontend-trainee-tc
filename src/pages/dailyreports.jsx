@@ -23,7 +23,7 @@ function DailyReport() {
     setSubmitting(true)
     try {
       await submitDailyReport(form)
-      toast.success('Daily report submitted!')
+      toast.success('Daily report submitted! Your manager has been notified via email.')
       setForm(prev => ({ ...prev, work_done: '', blockers: '', plan_tomorrow: '' }))
       fetchReports()
     } catch (err) {
@@ -34,6 +34,20 @@ function DailyReport() {
   return (
     <div style={{ maxWidth: 700, margin: '0 auto', padding: 24 }}>
       <h2>Daily Report</h2>
+      
+      {/* Info Banner */}
+      <div style={{ 
+        background: '#dbeafe', 
+        border: '1px solid #93c5fd', 
+        borderRadius: 8, 
+        padding: 12, 
+        marginBottom: 24,
+        color: '#1e40af',
+        fontSize: 13,
+      }}>
+        <strong>📧 Note:</strong> When you submit your daily report, your manager will receive an email notification and you will receive a system notification when they acknowledge it.
+      </div>
+
       <form onSubmit={handleSubmit} style={{ background: '#f9fafb', borderRadius: 10, padding: 24, marginBottom: 32, border: '1px solid #e5e7eb' }}>
         <div className="form-group">
           <label>Date</label>

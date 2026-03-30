@@ -88,6 +88,7 @@ export const acknowledgeDailyReport = (id) => api.patch(`/manager/daily-reports/
 export const getNotifications = () => api.get('/notifications');
 export const markNotificationRead = (id) => api.patch(`/notifications/${id}/read`);
 export const markAllNotificationsRead = () => api.patch('/notifications/read-all');
+export const getNotificationDetail = (id) => api.get(`/notifications/${id}`);
 
 export const getMyDocuments = () => api.get('/documents/my');
 export const getAllDocuments = (status) => api.get('/documents/all', { params: { status } });

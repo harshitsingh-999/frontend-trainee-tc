@@ -44,6 +44,13 @@ const NAV_LINKS = [
     roles: [1, 2, 3, 4],
   },
   {
+    to: '/notifications',
+    label: 'Notifications',
+    subtitle: 'View all system notifications and alerts.',
+    icon: <FaBell />,
+    roles: [1, 2, 3, 4],
+  },
+  {
     to: '/attendance',
     label: 'Attendance',
     subtitle: 'Review daily attendance and leave information.',

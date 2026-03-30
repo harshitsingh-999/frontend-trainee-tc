@@ -17,11 +17,13 @@ import SuperAdmin from './pages/SuperAdmin/SuperAdmin.jsx'
 import AdminDashboard from './pages/Admin/Dashboard.jsx'
 import UsersList from './pages/Admin/UsersList.jsx'
 import CreateUser from './pages/Admin/CreateUser.jsx'
+import DocumentApproval from './pages/Admin/DocumentApproval.jsx'
 import ProjectProgress from './pages/ProjectProgress.jsx'
 import Calendar from "./pages/Calender.jsx";
 import ForgotPassword from './pages/Auth/forgotpassword.jsx'
 import ResetPassword from './pages/Auth/resetpassword.jsx'
 import DailyReport from './pages/dailyreports.jsx'
+import Notification from './pages/notification.jsx'
 
 const SUPERADMIN_EMAILS = [
   'superadmin@company.com',
@@ -104,6 +106,7 @@ function App() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/daily-report" element={<ProtectedRoute><DailyReport /></ProtectedRoute>} />
+        <Route path="/notifications" element={<ProtectedRoute><Notification /></ProtectedRoute>} />
 
         {/* Root redirect */}
         <Route path="/" element={<Navigate to={user ? getRedirectPath(user) : '/login'} replace />} />
@@ -125,6 +128,7 @@ function App() {
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="users" element={<UsersList />} />
           <Route path="create-user" element={<CreateUser />} />
+          <Route path="documents" element={<DocumentApproval />} />
         </Route>
 
         {/* SuperAdmin routes */}

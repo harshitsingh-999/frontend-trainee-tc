@@ -6,6 +6,24 @@ const API_URL =
   import.meta.env.VITE_API_URL ||
   'http://localhost:7357/api/v1';
 const SESSION_STORAGE_KEY = 'authSession';
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+const toIsoString = (value) => {
+  if (!value) return null;
+  const date = new Date(value);
+  return Number.isFinite(date.getTime()) ? date.toISOString() : null;
+};
+
+const createDefaultSessionExpiry = () => new Date(Date.now() + ONE_DAY_MS).toISOString();
+
+const getPersistedSession = () => {
+  try {
+    const value = localStorage.getItem(SESSION_STORAGE_KEY);
+    return value ? JSON.parse(value) : null;
+  } catch {
+    return null;
+  }
+};
 
 const axiosClient = axios.create({
   baseURL: API_URL,
@@ -30,9 +48,17 @@ const persistToken = (token) => {
 };
 
 const persistSession = (payload = {}) => {
+  const fallbackSession = getPersistedSession();
   const session = {
-    accessTokenExpiresAt: payload?.accessTokenExpiresAt || null,
-    refreshTokenExpiresAt: payload?.refreshTokenExpiresAt || null
+    refreshTokenExpiresAt:
+      toIsoString(payload?.refreshTokenExpiresAt) ||
+      toIsoString(fallbackSession?.refreshTokenExpiresAt) ||
+      createDefaultSessionExpiry(),
+    accessTokenExpiresAt:
+      toIsoString(payload?.accessTokenExpiresAt) ||
+      toIsoString(payload?.refreshTokenExpiresAt) ||
+      toIsoString(fallbackSession?.refreshTokenExpiresAt) ||
+      createDefaultSessionExpiry()
   };
 
   if (session.accessTokenExpiresAt || session.refreshTokenExpiresAt) {

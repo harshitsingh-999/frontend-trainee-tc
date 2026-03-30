@@ -34,6 +34,12 @@ const NAV_ITEMS = [
     label: 'User Management',
     subtitle: 'Manage intern and manager accounts from one place.',
   },
+  {
+    to: '/admin/documents',
+    icon: <FaClipboardList />,
+    label: 'Document Approval',
+    subtitle: 'Review and approve intern documents.',
+  },
   // {
   //   to: '/admin/create-user',
   //   icon: <FaUserPlus />,
