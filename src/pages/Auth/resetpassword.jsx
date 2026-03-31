@@ -48,14 +48,13 @@ function ResetPassword() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-logo">
-          <div className="login-mark">t:</div>
-          <div className="login-text">
-            <span className="login-name">teamComputers</span>
-            <span className="login-subtitle">Intern Management</span>
+                  <div className="logo"><img src={logo} alt="Team Computers" className="login-logo-img" /></div>
+                  <div className="login-text">
+                    <span className="login-subtitle">Reset Password</span>
           </div>
         </div>
         <h2 className="login-title">Reset Password</h2>
-        <p className="login-description">Enter your new password below.</p>
+        <p className="login-description"><h6>Enter your new password below</h6></p>
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="password">New Password</label>

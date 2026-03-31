@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { forgotPassword } from '../../api/api'
+import logo from '../../assets/logo.png'
 
 function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -27,14 +28,13 @@ function ForgotPassword() {
     <div className="login-page">
       <div className="login-card">
         <div className="login-logo">
-          <div className="login-mark">t:</div>
+          <div className="logo"><img src={logo} alt="Team Computers" className="login-logo-img" /></div>
           <div className="login-text">
-            <span className="login-name">teamComputers</span>
-            <span className="login-subtitle">Intern Management</span>
+            <span className="login-subtitle">Forget Password</span>
           </div>
         </div>
-        <h2 className="login-title">Forgot Password</h2>
-        <p className="login-description">Enter your official email and we'll send you a reset link.</p>
+        {/* <h2 className="login-title">Forgot Password</h2> */}
+        <p className="login-description"><h6>Enter your official email to reset password</h6></p>
         <form className="login-form" onSubmit={handleSubmit}>
           <div className="form-group">
             <label htmlFor="email">Official Email</label>

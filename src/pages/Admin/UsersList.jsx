@@ -150,7 +150,7 @@ const UsersList = () => {
       {/* Toolbar */}
       <div style={{ display:'flex', gap:8, flexWrap:'wrap' }}>
         <div style={{ display:'flex', alignItems:'center', gap:8, background:'#fff', border:'1.5px solid #dde3f0', borderRadius:10, padding:'8px 12px', flex:1, minWidth:140 }}>
-          <span style={{ color:'#9ca3af' }}>🔍</span>
+          {/* <span style={{ color:'#9ca3af' }}>🔍</span> */}
           <input type="text" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
             style={{ border:'none', outline:'none', background:'none', fontSize:13, width:'100%', fontFamily:'inherit' }} />
         </div>

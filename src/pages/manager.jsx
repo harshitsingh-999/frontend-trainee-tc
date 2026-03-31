@@ -324,8 +324,8 @@ function InternDetailModal({ trainee, onClose }) {
         {/* Sub-tabs */}
         <div style={{ display: 'flex', gap: 4, padding: '0 24px', borderBottom: '1px solid #e5e7eb' }}>
           {[
-            { key: 'timeline', label: '📅 Internship Timeline' },
-            { key: 'worklog',  label: '📝 Task Worklog' },
+            { key: 'timeline', label: ' Internship Timeline' },
+            { key: 'worklog',  label: ' Task Worklog' },
           ].map(t => (
             <button key={t.key} onClick={() => setDetailTab(t.key)} style={{
               padding: '10px 18px', border: 'none', cursor: 'pointer', background: 'none',
