@@ -2,6 +2,12 @@ import React, { useState, useEffect } from 'react'
 import { getAllDocuments, reviewDocument } from '../../api/api'
 import toast from 'react-hot-toast'
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+  ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1\/?$/, '')
+  : import.meta.env.VITE_API_URL
+    ? import.meta.env.VITE_API_URL.replace(/\/api\/v1\/?$/, '')
+    : 'http://localhost:7357'
+
 function DocumentApproval() {
   const [documents, setDocuments] = useState([])
   const [loading, setLoading] = useState(false)
@@ -69,6 +75,29 @@ function DocumentApproval() {
       other: 'Other',
     }
     return labels[docType] || docType
+  }
+
+  const getDocumentUrl = (doc) => {
+    const directUrl =
+      doc?.file_url ||
+      doc?.document_url ||
+      doc?.url ||
+      doc?.document?.file_url ||
+      doc?.document?.url ||
+      null
+
+    if (directUrl) {
+      return /^https?:\/\//i.test(directUrl) ? directUrl : `${API_BASE}${directUrl}`
+    }
+
+    const relativePath =
+      doc?.file_path ||
+      doc?.document_path ||
+      doc?.path ||
+      doc?.storage_path ||
+      null
+
+    return relativePath ? `${API_BASE}${relativePath}` : null
   }
 
   return (
@@ -210,6 +239,30 @@ function DocumentApproval() {
                       </div>
                     )}
                   </div>
+
+                  {getDocumentUrl(doc) && (
+                    <div style={{ marginBottom: 12 }}>
+                      <a
+                        href={getDocumentUrl(doc)}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          padding: '9px 14px',
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          borderRadius: 8,
+                          textDecoration: 'none',
+                          fontSize: 13,
+                          fontWeight: 600,
+                        }}
+                      >
+                        Open Document
+                      </a>
+                    </div>
+                  )}
 
                   {doc.status === 'pending' && (
                     <div style={{ display: 'flex', gap: 12 }}>

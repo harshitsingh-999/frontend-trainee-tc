@@ -16,6 +16,8 @@ const DOC_TYPE_LABELS = {
   pan_card: 'PAN Card',
   other: 'Other',
 }
+const MAX_DOCUMENT_SIZE_BYTES = 5 * 1024 * 1024
+const ALLOWED_DOCUMENT_TYPES = ['application/pdf', 'image/jpeg', 'image/png']
 
 // ── STATUS BADGE ──────────────────────────────────────────
 function StatusBadge({ status }) {
@@ -167,14 +169,6 @@ export default function ProfileDrawer({ open, onClose }) {
   }, [open, activeTab, isIntern])
 
   // ── Close on outside click ─────────────────────────────
-  useEffect(() => {
-    if (!open) return
-    const handler = (e) => {
-      if (drawerRef.current && !drawerRef.current.contains(e.target)) onClose()
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open, onClose])
 
   // ── Avatar handlers ────────────────────────────────────
   const handleAvatarUpload = (e) => {
@@ -256,9 +250,38 @@ export default function ProfileDrawer({ open, onClose }) {
   }
 
   // ── Document upload handler ────────────────────────────
+  const handleDocFileChange = (event) => {
+    const nextFile = event.target.files?.[0] || null
+
+    if (!nextFile) {
+      setDocFile(null)
+      return
+    }
+
+    if (!ALLOWED_DOCUMENT_TYPES.includes(nextFile.type)) {
+      toast.error('Only PDF, JPG, and PNG files are allowed.')
+      event.target.value = ''
+      setDocFile(null)
+      return
+    }
+
+    if (nextFile.size > MAX_DOCUMENT_SIZE_BYTES) {
+      toast.error('File is too large. Please upload a file smaller than 5MB.')
+      event.target.value = ''
+      setDocFile(null)
+      return
+    }
+
+    setDocFile(nextFile)
+  }
+
   const handleDocUpload = async () => {
     if (!docFile) {
       toast.error('Please select a file first.')
+      return
+    }
+    if (docFile.size > MAX_DOCUMENT_SIZE_BYTES) {
+      toast.error('File is too large. Please upload a file smaller than 5MB.')
       return
     }
     const formData = new FormData()
@@ -284,12 +307,15 @@ export default function ProfileDrawer({ open, onClose }) {
   return (
     <>
       {/* Backdrop */}
-      <div style={{
-        position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
-        zIndex: 1100, opacity: open ? 1 : 0,
-        pointerEvents: open ? 'all' : 'none',
-        transition: 'opacity 0.2s',
-      }} />
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)',
+          zIndex: 1100, opacity: open ? 1 : 0,
+          pointerEvents: open ? 'all' : 'none',
+          transition: 'opacity 0.2s',
+        }}
+      />
 
       {/* Drawer */}
       <div
@@ -496,21 +522,6 @@ export default function ProfileDrawer({ open, onClose }) {
                     </div>
                   </div>
 
-                  {/* Internship Dates */}
-                  <div style={{ marginBottom: 18 }}>
-                    <SectionLabel>Internship Dates</SectionLabel>
-                    <div style={{ display: 'flex', gap: 10 }}>
-                      <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                        <label>Start Date {isNew && <span style={{ color: '#dc2626' }}>*</span>}</label>
-                        <input name="enrollment_date" type="date" value={form.enrollment_date} onChange={handleChange} />
-                      </div>
-                      <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-                        <label>End Date</label>
-                        <input name="expected_end_date" type="date" value={form.expected_end_date} onChange={handleChange} />
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Additional */}
                   <div style={{ marginBottom: 18 }}>
                     <SectionLabel>Additional Info</SectionLabel>
@@ -569,9 +580,7 @@ export default function ProfileDrawer({ open, onClose }) {
 
                   {isIntern && profile?.trainee && (
                     <div style={{ marginBottom: 20 }}>
-                      <SectionLabel>Internship</SectionLabel>
-                      <Field label="Start Date"              value={profile.trainee.enrollment_date} />
-                      <Field label="End Date"                value={profile.trainee.expected_end_date} />
+                      <SectionLabel>Additional Info</SectionLabel>
                       <Field label="Certifications / Skills" value={profile.trainee.certifications} />
                     </div>
                   )}
@@ -634,16 +643,31 @@ export default function ProfileDrawer({ open, onClose }) {
                     ref={docFileRef}
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
-                    onChange={e => setDocFile(e.target.files[0] || null)}
+                    onChange={handleDocFileChange}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => docFileRef.current?.click()}
+                    disabled={uploadingDoc}
                     style={{
-                      width: '100%', padding: '7px 10px', borderRadius: 8,
+                      width: '100%', padding: '10px 12px', borderRadius: 8,
                       border: '1px solid #dde3f0', fontSize: 13,
                       fontFamily: 'inherit', boxSizing: 'border-box',
+                      background: '#fff', color: '#1f2933', cursor: uploadingDoc ? 'not-allowed' : 'pointer',
+                      textAlign: 'left', fontWeight: 600,
                     }}
-                  />
+                  >
+                    {docFile ? 'Change selected file' : 'Choose file'}
+                  </button>
                   {docFile && (
                     <div style={{ fontSize: 12, color: '#6b7280', marginTop: 4 }}>
                       Selected: <strong>{docFile.name}</strong>
+                    </div>
+                  )}
+                  {!docFile && (
+                    <div style={{ fontSize: 12, color: '#9ca3af', marginTop: 4 }}>
+                      No file selected
                     </div>
                   )}
                 </div>
