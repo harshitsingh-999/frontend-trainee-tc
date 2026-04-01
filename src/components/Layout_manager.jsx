@@ -27,6 +27,36 @@ const API_BASE = api.defaults.baseURL
 const MOBILE_BREAKPOINT = 900
 
 const getAvatarUrl = (url) => (url ? `${API_BASE}${url}` : null)
+const getNotificationTarget = (notification) => {
+  const payload = notification?.data || notification?.payload || {}
+  const fileCandidate =
+    notification?.file_url ||
+    notification?.document_url ||
+    notification?.url ||
+    notification?.link_url ||
+    payload?.file_url ||
+    payload?.document_url ||
+    payload?.filePath ||
+    payload?.file_path ||
+    payload?.document_path ||
+    payload?.path ||
+    null
+
+  if (typeof fileCandidate === 'string' && fileCandidate.trim()) {
+    return /^https?:\/\//i.test(fileCandidate)
+      ? fileCandidate
+      : `${API_BASE}${fileCandidate.startsWith('/') ? '' : '/'}${fileCandidate}`
+  }
+
+  return (
+    notification?.route ||
+    notification?.link ||
+    payload?.route ||
+    payload?.link ||
+    payload?.url ||
+    null
+  )
+}
 
 const ROLE_LABELS = {
   1: 'Admin',
@@ -384,9 +414,21 @@ function LayoutManager({ children }) {
                           ? new Date(createdAt).toLocaleString()
                           : 'Unknown time'
 
+                        const target = getNotificationTarget(notification)
+                        const notificationText = `${notification.title || ''} ${notification.message || ''}`.toLowerCase()
                         const handleNotifClick = () => {
                           setNotifOpen(false)
-                          if (notification.link) navigate(notification.link)
+                          if (typeof target === 'string' && target.trim()) {
+                            if (/^https?:\/\//i.test(target)) {
+                              window.open(target, '_blank', 'noopener,noreferrer')
+                            } else {
+                              navigate(target)
+                            }
+                            return
+                          }
+                          if (notificationText.includes('document')) {
+                            navigate(Number(user?.role_id) === 1 ? '/admin/documents' : '/notifications')
+                          }
                         }
 
                         return (
@@ -397,10 +439,10 @@ function LayoutManager({ children }) {
                               padding: '10px 16px',
                               borderBottom: '1px solid #f9fafb',
                               background: notification.is_read ? '#fff' : '#eff6ff',
-                              cursor: notification.link ? 'pointer' : 'default',
+                              cursor: target || notificationText.includes('document') ? 'pointer' : 'default',
                               transition: 'background 0.15s',
                             }}
-                            onMouseEnter={e => { if (notification.link) e.currentTarget.style.background = '#dbeafe' }}
+                            onMouseEnter={e => { if (target || notificationText.includes('document')) e.currentTarget.style.background = '#dbeafe' }}
                             onMouseLeave={e => { e.currentTarget.style.background = notification.is_read ? '#fff' : '#eff6ff' }}
                           >
                             <div style={{ fontWeight: 600, fontSize: 13 }}>
@@ -412,7 +454,7 @@ function LayoutManager({ children }) {
                             <div style={{ fontSize: 11, color: '#9ca3af', marginTop: 4 }}>
                               {timestamp}
                             </div>
-                            {notification.link && (
+                            {(target || notificationText.includes('document')) && (
                               <div style={{ fontSize: 11, color: '#3b82f6', marginTop: 2, fontWeight: 500 }}>
                                 Tap to open →
                               </div>

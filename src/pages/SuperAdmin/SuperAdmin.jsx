@@ -17,6 +17,11 @@ import { useAuth } from '../../context/authcontext.jsx'
 /* ── Role IDs ── */
 // 1=Admin, 2=Manager, 3=Buddy/Trainee, 4=Intern, 5=SuperAdmin
 const ROLE = { SUPERADMIN: 5, ADMIN: 1, MANAGER: 2, BUDDY: 3, INTERN: 4 };
+const API_BASE = import.meta.env.VITE_API_BASE_URL
+  ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1\/?$/, "")
+  : import.meta.env.VITE_API_URL
+    ? import.meta.env.VITE_API_URL.replace(/\/api\/v1\/?$/, "")
+    : "http://localhost:7357";
 
 /* ── Modal ── */
 function Modal({ title, onClose, children }) {
@@ -263,6 +268,55 @@ function SuperAdmin() {
     }
   };
 
+  const handleNotificationClick = (notification) => {
+    const payload = notification?.data || notification?.payload || {};
+    const fileCandidate =
+      notification?.file_url ||
+      notification?.document_url ||
+      notification?.url ||
+      notification?.link_url ||
+      payload?.file_url ||
+      payload?.document_url ||
+      payload?.filePath ||
+      payload?.file_path ||
+      payload?.document_path ||
+      payload?.path ||
+      null;
+
+    if (typeof fileCandidate === "string" && fileCandidate.trim()) {
+      const resolvedFileUrl = /^https?:\/\//i.test(fileCandidate)
+        ? fileCandidate
+        : `${API_BASE}${fileCandidate.startsWith("/") ? "" : "/"}${fileCandidate}`;
+      window.open(resolvedFileUrl, "_blank", "noopener,noreferrer");
+      setNotifOpen(false);
+      return;
+    }
+
+    const candidateRoute =
+      notification?.route ||
+      notification?.link ||
+      payload?.route ||
+      payload?.link ||
+      payload?.url ||
+      null;
+
+    if (typeof candidateRoute === "string" && candidateRoute.trim()) {
+      if (/^https?:\/\//i.test(candidateRoute)) {
+        window.open(candidateRoute, "_blank", "noopener,noreferrer");
+      } else {
+        navigate(candidateRoute);
+      }
+      setNotifOpen(false);
+      return;
+    }
+
+    const notificationText = `${notification?.title || ""} ${notification?.message || ""}`.toLowerCase();
+    if (notificationText.includes("document")) {
+      navigate("/admin/documents");
+      setNotifOpen(false);
+    }
+  };
+
   /* ── FILTERED LISTS ── */
   const admins = allUsers.filter(u => getRoleKey(u) === "admin");
   const managers = allUsers.filter(u => getRoleKey(u) === "manager");
@@ -308,6 +362,21 @@ function SuperAdmin() {
     </div>
   );
 
+  const passwordField = (label = "Password", key = "password") => (
+    <div className="sa-form-group" key={key}>
+      <label>{label}</label>
+      <input
+        type="password"
+        name={key}
+        value={formData[key] ?? ""}
+        placeholder={label}
+        autoComplete="new-password"
+        spellCheck={false}
+        onChange={e => setFormData(p => ({ ...p, [key]: e.target.value }))}
+      />
+    </div>
+  );
+
   /* ── OPEN MODALS ── */
   const openAdd = (type) => { setFormData({}); setEditTarget(null); setModal("add" + type); };
   const openEdit = (type, item) => { setFormData({ ...item, name: item.name || item.full_name || "" }); setEditTarget(item.id); setModal("edit" + type); };
@@ -322,9 +391,13 @@ function SuperAdmin() {
         email: formData.email,
         role_id: roleId,
         department: formData.dept || formData.department || "",
-        ...(formData.password ? { password: formData.password } : {}),
+        internship_start_date: formData.internship_start_date || "",
+        internship_end_date: formData.internship_end_date || "",
         is_active: 1,
       };
+      if (Object.prototype.hasOwnProperty.call(formData, "password")) {
+        payload.password = formData.password ?? "";
+      }
       if (editTarget) {
         await axiosClient.put(`/admin/users/${editTarget}`, payload);
         showToast("User updated successfully");
@@ -1234,10 +1307,12 @@ function SuperAdmin() {
                       return (
                         <div
                           key={notification.id}
+                          onClick={() => handleNotificationClick(notification)}
                           style={{
                             padding: "10px 16px",
                             borderBottom: "1px solid #f9fafb",
-                            background: notification.is_read ? "#fff" : "#eff6ff"
+                            background: notification.is_read ? "#fff" : "#eff6ff",
+                            cursor: "pointer"
                           }}
                         >
                           <div style={{ fontWeight: 600, fontSize: 13 }}>{notification.title}</div>
@@ -1292,7 +1367,7 @@ function SuperAdmin() {
         <Modal title={modal === "addAdmin" ? "Add New Admin" : "Edit Admin"} onClose={() => setModal(null)}>
           {field("Full Name", "name")}{field("Email", "email", "email")}
           {field("Department", "dept", "text", departments)}
-          {modal === "addAdmin" && field("Password", "password", "password")}
+          {modal === "addAdmin" && passwordField()}
           <button className="sa-btn-primary sa-full-btn" style={{ marginTop: 8 }} disabled={saving}
             onClick={() => saveUser(ROLE.ADMIN)}>{saving ? "Saving..." : modal === "addAdmin" ? "Add Admin" : "Save Changes"}</button>
         </Modal>
@@ -1301,7 +1376,7 @@ function SuperAdmin() {
         <Modal title={modal === "addManager" ? "Add New Manager" : "Edit Manager"} onClose={() => setModal(null)}>
           {field("Full Name", "name")}{field("Email", "email", "email")}
           {field("Department", "dept", "text", departments)}
-          {modal === "addManager" && field("Password", "password", "password")}
+          {modal === "addManager" && passwordField()}
           <button className="sa-btn-primary sa-full-btn" style={{ marginTop: 8 }} disabled={saving}
             onClick={() => saveUser(ROLE.MANAGER)}>{saving ? "Saving..." : modal === "addManager" ? "Add Manager" : "Save Changes"}</button>
         </Modal>
@@ -1310,7 +1385,9 @@ function SuperAdmin() {
         <Modal title={modal === "addIntern" ? "Add New Intern" : "Edit Intern"} onClose={() => setModal(null)}>
           {field("Full Name", "name")}{field("Email", "email", "email")}
           {field("Department", "dept", "text", departments)}
-          {modal === "addIntern" && field("Password", "password", "password")}
+          {field("Start Date", "internship_start_date", "date")}
+          {field("End Date", "internship_end_date", "date")}
+          {modal === "addIntern" && passwordField()}
           <button className="sa-btn-primary sa-full-btn" style={{ marginTop: 8 }} disabled={saving}
             onClick={() => saveUser(ROLE.INTERN)}>{saving ? "Saving..." : modal === "addIntern" ? "Add Intern" : "Save Changes"}</button>
         </Modal>

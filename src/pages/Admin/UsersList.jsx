@@ -19,6 +19,7 @@ const normalizeTraineesPayload = (payload) => {
 const isActive = (v) => v === true || v === 1 || v === '1';
 const getRoleName  = (id) => ({ 1:'Admin', 2:'Manager', 3:'Trainee', 4:'Intern' }[id] || 'Unknown');
 const getRoleColor = (id) => ({ 1:'#6366f1', 2:'#0ea5e9', 3:'#10b981', 4:'#f59e0b' }[id] || '#94a3b8');
+const getDisplayName = (userLike, fallback) => userLike?.name || userLike?.full_name || userLike?.email || fallback;
 
 const UsersList = () => {
   const { users, loading, error, fetchUsers, toggleUserStatus } = useUser();
@@ -71,15 +72,26 @@ const UsersList = () => {
 
   useEffect(() => { if (showAssign) loadAssignData(); }, [showAssign, loadAssignData]);
 
+  useEffect(() => {
+    if (!selTrainee) {
+      setSelManager('');
+      return;
+    }
+
+    const selectedTrainee = trainees.find(t => String(t.id) === String(selTrainee));
+    setSelManager(selectedTrainee?.manager_id ? String(selectedTrainee.manager_id) : '');
+  }, [selTrainee, trainees]);
+
   /* ── assign manager ── */
   const handleAssignManager = async (e) => {
     e.preventDefault();
     if (!selTrainee) { setAssignErr('Please select an intern'); return; }
+    if (!selManager) { setAssignErr('Please select a manager'); return; }
     setAssigning(true); setAssignMsg(''); setAssignErr('');
     try {
       await axiosClient.patch(
         `/admin/trainees/${selTrainee}/assign-manager`,
-        { manager_id: selManager || null }
+        { manager_id: selManager }
       );
       setAssignMsg('Manager assigned successfully!');
       setSelTrainee(''); setSelManager('');
@@ -190,6 +202,9 @@ const UsersList = () => {
                 </span>
               </div>
               <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+                <span style={{ fontSize:12, color:'#6b7280' }}>
+                  Department: <strong style={{ color:'#1f2933' }}>{u.department || u.dept || '—'}</strong>
+                </span>
                 <span style={{ display:'inline-flex', alignItems:'center', gap:5, padding:'4px 10px', borderRadius:99, fontSize:12, fontWeight:600, background:u.is_active ? '#d1fae5' : '#fee2e2', color:u.is_active ? '#065f46' : '#991b1b' }}>
                   <span style={{ width:6, height:6, borderRadius:'50%', background:u.is_active ? '#059669' : '#dc2626' }} />
                   {u.is_active ? 'Active' : 'Inactive'}
@@ -204,10 +219,10 @@ const UsersList = () => {
         </div>
       ) : (
         <div style={{ background:'#fff', borderRadius:14, border:'1px solid #dde3f0', overflowX:'auto' }}>
-          <table style={{ width:'100%', borderCollapse:'collapse', minWidth:520 }}>
+          <table style={{ width:'100%', borderCollapse:'collapse', minWidth:640 }}>
             <thead style={{ background:'#003b5c' }}>
               <tr>
-                {['#','User','Email','Role','Status','Actions'].map(h => (
+                {['#','User','Email','Department','Role','Status','Actions'].map(h => (
                   <th key={h} style={{ padding:'12px 14px', color:'#fff', fontSize:11, fontWeight:700, textTransform:'uppercase', letterSpacing:'0.06em', textAlign:'left' }}>{h}</th>
                 ))}
               </tr>
@@ -225,6 +240,7 @@ const UsersList = () => {
                     </div>
                   </td>
                   <td style={{ padding:'12px 14px', borderBottom:'1px solid #f1f5f9', fontSize:12, color:'#6b7280' }}>{u.email}</td>
+                  <td style={{ padding:'12px 14px', borderBottom:'1px solid #f1f5f9', fontSize:12, color:'#6b7280' }}>{u.department || u.dept || '—'}</td>
                   <td style={{ padding:'12px 14px', borderBottom:'1px solid #f1f5f9' }}>
                     <span style={{ display:'inline-block', padding:'4px 10px', borderRadius:99, fontSize:12, fontWeight:700, background:getRoleColor(u.role_id)+'20', color:getRoleColor(u.role_id) }}>
                       {getRoleName(u.role_id)}
@@ -291,7 +307,7 @@ const UsersList = () => {
                       <option value="">— Choose an intern ({trainees.length} total) —</option>
                       {trainees.map(t => (
                         <option key={t.id} value={t.id}>
-                          {t.user?.name || t.user?.email || `Intern #${t.id}`}
+                          {getDisplayName(t.user, `Intern #${t.id}`)}
                           {t.manager_id ? ' ✓ (has manager)' : ' (unassigned)'}
                         </option>
                       ))}
@@ -303,17 +319,16 @@ const UsersList = () => {
 
                   <div style={{ marginBottom:20 }}>
                     <label style={{ display:'block', fontWeight:600, fontSize:13, color:'#374151', marginBottom:7 }}>
-                      Select Manager
+                      Select Manager *
                       {managers.length === 0 && <span style={{ color:'#dc2626', fontWeight:400, marginLeft:6 }}>(no active managers found)</span>}
                     </label>
-                    <select value={selManager} onChange={e => setSelManager(e.target.value)}
+                    <select value={selManager} onChange={e => setSelManager(e.target.value)} required
                       style={{ width:'100%', padding:'12px 14px', border:'1.5px solid #dde3f0', borderRadius:9, fontSize:14, fontFamily:'inherit', outline:'none', boxSizing:'border-box' }}>
-                      <option value="">— Unassign (remove manager) —</option>
+                      <option value="">— Choose a manager ({managers.length} total) —</option>
                       {managers.map(m => (
-                        <option key={m.id} value={m.id}>{m.name} — {m.email}</option>
+                        <option key={m.id} value={m.id}>{getDisplayName(m, `Manager #${m.id}`)} — {m.email}</option>
                       ))}
                     </select>
-                    <p style={{ fontSize:11, color:'#9ca3af', margin:'5px 0 0' }}>Leave blank to remove the current manager assignment.</p>
                   </div>
 
                   <button type="submit" disabled={assigning || trainees.length === 0}
