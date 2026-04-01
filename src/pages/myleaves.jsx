@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import toast from 'react-hot-toast'
-import api from '../api/login_api.js'
+import { getMyLeaves, getLeaveBalance, applyLeave, cancelLeave } from '../api/api.js'
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 const formatDate = (d) => {
@@ -20,9 +20,10 @@ const LEAVE_TYPES = [
 ]
 
 const STATUS_INFO = {
-  pending_leave: { label: ' Pending', bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
-  on_leave: { label: '✓ Approved', bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
-  leave_rejected: { label: '✕ Rejected', bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },
+  pending: { label: ' Pending', bg: '#fffbeb', color: '#d97706', border: '#fde68a' },
+  approved: { label: '✓ Approved', bg: '#f0fdf4', color: '#16a34a', border: '#bbf7d0' },
+  rejected: { label: '✕ Rejected', bg: '#fef2f2', color: '#dc2626', border: '#fecaca' },
+  cancelled: { label: '⊗ Cancelled', bg: '#f3f4f6', color: '#6b7280', border: '#d1d5db' },
 }
 
 const TYPE_MAP = Object.fromEntries(LEAVE_TYPES.map(t => [t.value, t]))
@@ -105,10 +106,10 @@ export default function MyLeaves({ onLeaveChanged }) {
   const fetchAll = useCallback(async () => {
     try {
       const [leavesRes, balanceRes] = await Promise.all([
-        api.get('/intern/leaves'),
-        api.get('/intern/leave-balance'),
+        getMyLeaves(),
+        getLeaveBalance(),
       ])
-      const newLeaves = leavesRes.data.data || []
+      const newLeaves = Array.isArray(leavesRes.data) ? leavesRes.data : leavesRes.data.data || []
 
       // Detect status changes for notifications
       const prev = prevLeavesRef.current
@@ -117,10 +118,10 @@ export default function MyLeaves({ onLeaveChanged }) {
         if (prev[l.id] && prev[l.id] !== l.status) {
           const from = prev[l.id]
           const to = l.status
-          if (to === 'on_leave') {
-            changed.push({ id: l.id, msg: `✅ Your leave on ${formatDate(l.attendance_date)} was APPROVED!`, type: 'success' })
-          } else if (to === 'leave_rejected') {
-            changed.push({ id: l.id, msg: `❌ Your leave on ${formatDate(l.attendance_date)} was rejected.`, type: 'error' })
+          if (to === 'approved') {
+            changed.push({ id: l.id, msg: `✅ Your leave on ${formatDate(l.leave_date)} was APPROVED!`, type: 'success' })
+          } else if (to === 'rejected') {
+            changed.push({ id: l.id, msg: `❌ Your leave on ${formatDate(l.leave_date)} was rejected.`, type: 'error' })
           }
         }
       })
@@ -135,7 +136,8 @@ export default function MyLeaves({ onLeaveChanged }) {
       prevLeavesRef.current = newPrev
 
       setLeaves(newLeaves)
-      setBalance(balanceRes.data.data)
+      const balanceData = Array.isArray(balanceRes.data) ? balanceRes.data : balanceRes.data.data || {}
+      setBalance(balanceData)
     } catch {
       notify('Failed to load leave data', 'error')
     } finally {
@@ -159,8 +161,8 @@ export default function MyLeaves({ onLeaveChanged }) {
     }
     setBusy(true)
     try {
-      const res = await api.post('/intern/leaves', { leave_date: leaveDate, leave_reason: leaveReason, leave_type: leaveType })
-      notify(res.data.message)
+      const res = await applyLeave({ leave_date: leaveDate, leave_reason: leaveReason, leave_type: leaveType })
+      notify(res.data.message || 'Leave request submitted successfully')
       setLeaveDate(''); setLeaveReason(''); setLeaveType('casual')
       await fetchAll()
       await Promise.resolve(onLeaveChanged?.())
@@ -173,8 +175,8 @@ export default function MyLeaves({ onLeaveChanged }) {
   const handleCancel = async (id) => {
     setCancelId(id)
     try {
-      const res = await api.delete(`/intern/leaves/${id}`)
-      notify(res.data.message)
+      const res = await cancelLeave(id)
+      notify(res.data.message || 'Leave request cancelled successfully')
       await fetchAll()
       await Promise.resolve(onLeaveChanged?.())
     } catch (err) {
@@ -182,7 +184,7 @@ export default function MyLeaves({ onLeaveChanged }) {
     } finally { setCancelId(null) }
   }
 
-  const pendingCount = leaves.filter(l => l.status === 'pending_leave').length
+  const pendingCount = leaves.filter(l => l.status === 'pending').length
   const newNotifCount = notifications.filter(n => !n.seen).length
 
   if (loading) return <div style={{ padding: 40, color: '#6b7280' }}>Loading leave data…</div>
@@ -193,7 +195,7 @@ export default function MyLeaves({ onLeaveChanged }) {
       {/* ── header ── */}
       <div className="dashboard-header">
         <div>
-          <h2>🤒 My Leaves</h2>
+          <h2> My Leaves</h2>
           <p>Apply for leave, track your quota, and view request status.</p>
         </div>
         <div style={{ fontSize: 13, color: '#6b7280' }}>
@@ -362,7 +364,7 @@ export default function MyLeaves({ onLeaveChanged }) {
 
           {leaves.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '50px 0', color: '#9ca3af' }}>
-              <div style={{ fontSize: 48, marginBottom: 12 }}>🤒</div>
+              {/* <div style={{ fontSize: 48, marginBottom: 12 }}>🤒</div> */}
               <p style={{ marginBottom: 8 }}>No leave requests yet.</p>
               <button onClick={() => setTab('apply')} style={{
                 padding: '8px 20px', borderRadius: 8, border: 'none',
@@ -374,9 +376,9 @@ export default function MyLeaves({ onLeaveChanged }) {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {leaves.map(leave => {
-                const si = STATUS_INFO[leave.status] || STATUS_INFO.pending_leave
+                const si = STATUS_INFO[leave.status] || STATUS_INFO.pending
                 const ti = TYPE_MAP[leave.leave_type] || TYPE_MAP.casual
-                const isPending = leave.status === 'pending_leave'
+                const isPending = leave.status === 'pending'
 
                 return (
                   <div key={leave.id} style={{
@@ -390,7 +392,7 @@ export default function MyLeaves({ onLeaveChanged }) {
                     <div style={{ flex: 1 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
                         <strong style={{ color: '#003b5c', fontSize: 15 }}>
-                          📅 {formatDate(leave.attendance_date)}
+                          📅 {formatDate(leave.leave_date)}
                         </strong>
                         <span style={{
                           padding: '2px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700,
@@ -404,9 +406,9 @@ export default function MyLeaves({ onLeaveChanged }) {
                           💬 {leave.leave_reason}
                         </div>
                       )}
-                      {leave.remarks && leave.status !== 'pending_leave' && (
-                        <div style={{ fontSize: 12, color: '#6b7280' }}>
-                          Manager note: {leave.remarks}
+                      {leave.rejection_reason && leave.status === 'rejected' && (
+                        <div style={{ fontSize: 12, color: '#dc2626' }}>
+                          <strong>Rejection reason:</strong> {leave.rejection_reason}
                         </div>
                       )}
                     </div>

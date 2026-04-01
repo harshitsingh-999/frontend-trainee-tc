@@ -10,6 +10,8 @@ import ManagerPage from './pages/manager.jsx'
 import InternTasks from './pages/interntask.jsx'
 import Attendance from './pages/attendence.jsx'
 import MyLeaves from './pages/myleaves.jsx'
+import LeaveApproval from './pages/LeaveApproval.jsx'
+import ProfileRequests from './pages/ProfileRequests.jsx'
 import LayoutManager from './components/Layout_manager.jsx'
 import { useAuth, AdminRoute, SuperAdminRoute } from './context/authcontext.jsx'
 import AdminLayout from './pages/Admin/Layout.jsx'
@@ -186,6 +188,7 @@ function App() {
         <Route path="/user-form" element={<ProtectedRoute><UserForm /></ProtectedRoute>} />
         <Route path="/users" element={<ProtectedRoute><Users /></ProtectedRoute>} />
         <Route path="/project-progress" element={<ProtectedRoute><ProjectProgress /></ProtectedRoute>} />
+        <Route path="/leaves/approval" element={<ProtectedRoute><LeaveApproval /></ProtectedRoute>} />
 
         {/* Admin routes */}
         <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
@@ -194,6 +197,8 @@ function App() {
           <Route path="users" element={<UsersList />} />
           <Route path="create-user" element={<CreateUser />} />
           <Route path="documents" element={<DocumentApproval />} />
+          <Route path="leaves" element={<LeaveApproval />} />
+          <Route path="profiles" element={<ProfileRequests />} />
         </Route>
 
         {/* SuperAdmin routes */}

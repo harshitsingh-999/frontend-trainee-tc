@@ -94,6 +94,34 @@ export const getMyDocuments = () => api.get('/documents/my');
 export const getAllDocuments = (status) => api.get('/documents/all', { params: { status } });
 export const reviewDocument = (id, data) => api.patch(`/documents/${id}/review`, data);
 
+// ── Leave Management endpoints ────────────────────────────────────────────
+
+// Intern endpoints
+export const applyLeave = (data) => api.post('/leaves', data);
+export const getMyLeaves = () => api.get('/leaves/my');
+export const cancelLeave = (id) => api.delete(`/leaves/${id}`);
+export const getLeaveBalance = () => api.get('/leaves/balance');
+
+// Manager endpoints
+export const getPendingLeaveRequests = () => api.get('/leaves/pending-requests');
+export const approveLeave = (id, data) => api.patch(`/leaves/${id}/approve`, data);
+export const rejectLeave = (id, data) => api.patch(`/leaves/${id}/reject`, data);
+
+// Admin endpoints
+export const getAllLeaveRequests = (params = {}) => api.get('/leaves/all', { params });
+
+// ── Profile Change Request endpoints ──────────────────────────────────────
+
+// Any user can view their own profile change requests
+export const getMyProfileChangeRequests = () => api.get('/profile-changes/my');
+export const createProfileChangeRequest = (data) => api.post('/profile-changes', data);
+
+// Admin endpoints for reviewing profile change requests
+export const getAllProfileChangeRequests = (params = {}) => api.get('/admin/profile-changes', { params });
+export const getProfileChangeRequestDetail = (id) => api.get(`/admin/profile-changes/${id}`);
+export const approveProfileChangeRequest = (id, data) => api.patch(`/admin/profile-changes/${id}/approve`, data);
+export const rejectProfileChangeRequest = (id, data) => api.patch(`/admin/profile-changes/${id}/reject`, data);
+
 export default api;
 
 

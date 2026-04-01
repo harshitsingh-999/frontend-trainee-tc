@@ -9,6 +9,8 @@ import {
   FaTachometerAlt,
   FaUserPlus,
   FaUsers,
+  FaCalendarCheck,
+  FaIdCard,
 } from 'react-icons/fa'
 import { useAuth } from '../../context/authcontext.jsx'
 import api from '../../api/login_api.js'
@@ -39,6 +41,18 @@ const NAV_ITEMS = [
     icon: <FaClipboardList />,
     label: 'Document Approval',
     subtitle: 'Review and approve intern documents.',
+  },
+  {
+    to: '/admin/leaves',
+    icon: <FaCalendarCheck />,
+    label: 'Leave Requests',
+    subtitle: 'Approve and manage intern leave requests.',
+  },
+  {
+    to: '/admin/profiles',
+    icon: <FaIdCard />,
+    label: 'Profile Changes',
+    subtitle: 'Review and approve profile change requests.',
   },
   // {
   //   to: '/admin/create-user',
