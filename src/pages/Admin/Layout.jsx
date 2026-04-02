@@ -10,7 +10,6 @@ import {
   FaUserPlus,
   FaUsers,
   FaCalendarCheck,
-  FaIdCard,
 } from 'react-icons/fa'
 import { useAuth } from '../../context/authcontext.jsx'
 import api from '../../api/login_api.js'
@@ -47,12 +46,6 @@ const NAV_ITEMS = [
     icon: <FaCalendarCheck />,
     label: 'Leave Requests',
     subtitle: 'Approve and manage intern leave requests.',
-  },
-  {
-    to: '/admin/profiles',
-    icon: <FaIdCard />,
-    label: 'Profile Changes',
-    subtitle: 'Review and approve profile change requests.',
   },
   // {
   //   to: '/admin/create-user',
@@ -313,7 +306,17 @@ function AdminLayout() {
 
                       const handleNotifClick = () => {
                         setNotifOpen(false)
-                        navigate('/admin/documents')
+                        const type = notification.type || ''
+                        const link = notification.link || ''
+                        if (link && link.startsWith('/admin/')) {
+                          navigate(link)
+                        } else if (type === 'profile_update' || type === 'profile_change') {
+                          navigate('/admin/documents?tab=profiles')
+                        } else if (type === 'leave_request' || type === 'leave') {
+                          navigate('/admin/leaves')
+                        } else {
+                          navigate('/admin/documents')
+                        }
                       }
 
                       return (

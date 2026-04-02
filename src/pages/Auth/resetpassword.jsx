@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { resetPassword } from '../../api/api'
+import logo from '../../assets/logo.png'
 
 function ResetPassword() {
   const [searchParams] = useSearchParams()

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react'
 import { useAuth } from '../context/authcontext.jsx'
 import { useNavigate } from 'react-router-dom'
@@ -84,6 +83,17 @@ function Dashboard() {
     }
   }, [isIntern, isManager])
 
+  // Poll intern profile every 2 minutes — picks up admin-extended internship dates without a full refresh
+  useEffect(() => {
+    if (!isIntern) return
+    const id = setInterval(() => {
+      api.get('/intern/profile')
+        .then(r => setTrainee(r.data.data?.trainee || null))
+        .catch(() => {})
+    }, 120000)
+    return () => clearInterval(id)
+  }, [isIntern])
+
   // Early returns AFTER all hooks
   if (loading) return <div style={{ padding: '30px' }}>Loading...</div>
 
@@ -94,8 +104,10 @@ function Dashboard() {
   const checkedOut = !!todayAttendance?.check_out_time
   const pendingTasks = myTasks.filter(t => t.status !== 'completed').length
 
-  // FIX 13: Check if internship is expired
-  const isInternshipExpired = isIntern && remainingDays === 0 && trainee?.expected_end_date
+  // Check if internship is expired — compare against actual date so admin extensions are respected
+  const isInternshipExpired = isIntern && !traineeLoading &&
+    trainee?.expected_end_date &&
+    new Date(trainee.expected_end_date) < new Date(new Date().toDateString())
 
   if (isInternshipExpired) {
     return (
@@ -643,4 +655,3 @@ function Dashboard() {
 }
 
 export default Dashboard
-
