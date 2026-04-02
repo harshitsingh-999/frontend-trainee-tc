@@ -69,7 +69,51 @@ function UserForm() {
 
     try {
       if (isEditMode) {
-        // ── EDIT MODE (coworker's flow) ──
+        // ── EDIT MODE ──
+        // For interns (role_id 4) updating personal/contact/academic data → send for approval
+        const isIntern = Number(formValues.role_id) === 4 || Number(editUser.role_id) === 4
+
+        if (isIntern) {
+          // Route personal info changes through approval workflow
+          const personalChanged = formValues.name !== (editUser.name || '')
+          const contactChanged  = formValues.phone !== (editUser.phone || '')
+          const academicChanged = formValues.college !== (editUser.college_name || editUser.college || '') ||
+                                  formValues.degree  !== (editUser.course || editUser.degree || '')
+
+          const requests = []
+
+          if (personalChanged) {
+            requests.push(api.post('/profile-change-requests', {
+              change_type: 'personal_info',
+              new_values: { name: formValues.name },
+            }))
+          }
+          if (contactChanged) {
+            requests.push(api.post('/profile-change-requests', {
+              change_type: 'contact_info',
+              new_values: { phone: formValues.phone },
+            }))
+          }
+          if (academicChanged) {
+            requests.push(api.post('/profile-change-requests', {
+              change_type: 'academic_info',
+              new_values: {
+                college_name: formValues.college,
+                course:       formValues.degree,
+              },
+            }))
+          }
+
+          if (requests.length > 0) {
+            await Promise.all(requests)
+            setSuccess('✓ Your update request has been submitted for admin approval.')
+            setTimeout(() => navigate(-1), 1800)
+            return
+          }
+          // No personal/contact/academic changes — fall through to direct save for other fields
+        }
+
+        // Admin/Manager editing another user — direct save
         const payload = {
           name:    formValues.name,
           email:   formValues.email,
@@ -77,12 +121,10 @@ function UserForm() {
           role_id: Number(formValues.role_id),
           is_active: 1,
         }
-        // Only send password if the admin actually typed one
         if (formValues.password.trim()) payload.password = formValues.password
 
         await api.put(`/users/${editUser.id}`, payload)
 
-        // Also update trainee record if they have one
         if (editUser.trainee_id || editUser.id) {
           await api.put(`/manager/trainees/${editUser.trainee_id || editUser.id}`, {
             college_name:      formValues.college,
@@ -91,7 +133,7 @@ function UserForm() {
             expected_end_date: formValues.endDate,
             buddy_id:          formValues.buddy_id   || null,
             manager_id:        formValues.manager_id || null,
-          }).catch(() => {}) // trainee record may not exist for all roles
+          }).catch(() => {})
         }
 
         setSuccess(`✓ ${formValues.name} updated successfully!`)

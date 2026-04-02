@@ -94,6 +94,49 @@ function Dashboard() {
   const checkedOut = !!todayAttendance?.check_out_time
   const pendingTasks = myTasks.filter(t => t.status !== 'completed').length
 
+  // FIX 13: Check if internship is expired
+  const isInternshipExpired = isIntern && remainingDays === 0 && trainee?.expected_end_date
+
+  if (isInternshipExpired) {
+    return (
+      <div style={{
+        minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'column', gap: 24, padding: 32, textAlign: 'center',
+      }}>
+        <div style={{
+          background: '#fff', borderRadius: 20, padding: '48px 40px', maxWidth: 480,
+          boxShadow: '0 4px 32px rgba(0,0,0,0.10)', border: '1px solid #fecaca',
+        }}>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>🎓</div>
+          <h2 style={{ fontSize: 24, fontWeight: 800, color: '#111827', margin: '0 0 12px' }}>
+            Internship Completed
+          </h2>
+          <p style={{ fontSize: 15, color: '#6b7280', lineHeight: 1.6, margin: '0 0 24px' }}>
+            Your internship period ended on <strong>{new Date(trainee.expected_end_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>.
+            <br /><br />
+            Your account is still active but functionality has been restricted.
+            Please contact your <strong>Admin</strong> or <strong>Manager</strong> for next steps.
+          </p>
+          <div style={{
+            background: '#fef9c3', border: '1px solid #fde047', borderRadius: 10,
+            padding: '12px 16px', fontSize: 13, color: '#854d0e', fontWeight: 500,
+          }}>
+            📧 Reach out to your admin/manager to extend or close your internship.
+          </div>
+          <button
+            onClick={async () => { await logout(); navigate('/login') }}
+            style={{
+              marginTop: 24, padding: '10px 28px', borderRadius: 10,
+              background: '#1f2937', color: '#fff', border: 'none',
+              fontSize: 14, fontWeight: 600, cursor: 'pointer',
+            }}>
+            Logout
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   const handleCheckIn = async () => {
     setAttendanceBusy(true); setAttendanceMsg(''); setAttendanceErr('')
     try {

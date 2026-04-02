@@ -1,22 +1,34 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useUser } from '../../context/UserContext';
+import axiosClient from '../../api/axiosClient';
 
 const CreateUser = () => {
   const { createUserData } = useUser();
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', role_id: 4 });
+  const [formData, setFormData] = useState({
+    name: '', email: '', password: '', role_id: 4,
+    internship_start: '', internship_end: '',
+    manager_id: '', buddy_id: '',
+  });
   const [loading, setLoading]   = useState(false);
   const [message, setMessage]   = useState('');
   const [error, setError]       = useState('');
   const [showPass, setShowPass] = useState(false);
+  const [managers, setManagers] = useState([]);
+  const [buddies,  setBuddies]  = useState([]);
+
+  useEffect(() => {
+    axiosClient.get('/admin/users', { params: { limit: 200 } })
+      .then(res => {
+        const list = res.data?.data?.users || res.data?.data || [];
+        setManagers(list.filter(u => Number(u.role_id) === 2));
+        setBuddies(list.filter(u => Number(u.role_id) === 3));
+      }).catch(() => {});
+  }, []);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    const fieldMap = {
-      new_user_email: 'email',
-      new_user_password: 'password',
-    };
+    const fieldMap = { new_user_email: 'email', new_user_password: 'password' };
     const key = fieldMap[name] || name;
-
     setFormData({ ...formData, [key]: key === 'role_id' ? parseInt(value) : value });
   };
 
@@ -24,22 +36,27 @@ const CreateUser = () => {
     e.preventDefault();
     setLoading(true); setError(''); setMessage('');
     try {
-      await createUserData(formData);
+      const payload = { ...formData };
+      if (!payload.internship_start) delete payload.internship_start;
+      if (!payload.internship_end)   delete payload.internship_end;
+      if (!payload.manager_id)       delete payload.manager_id;
+      if (!payload.buddy_id)         delete payload.buddy_id;
+      await createUserData(payload);
       setMessage('User created successfully!');
-      setFormData({ name: '', email: '', password: '', role_id: 4 });
+      setFormData({ name: '', email: '', password: '', role_id: 4, internship_start: '', internship_end: '', manager_id: '', buddy_id: '' });
       setTimeout(() => setMessage(''), 4000);
     } catch (err) {
       setError(err.message || 'Error creating user');
     } finally { setLoading(false); }
   };
 
-  // FIX 5: Admin (role_id 1) is removed from the options
   const roleInfo = {
     2: { label: 'Manager', desc: 'Manage teams and trainees', color: '#0ea5e9' },
     3: { label: 'Trainee', desc: 'Trainee level access',      color: '#10b981' },
     4: { label: 'Intern',  desc: 'Basic intern access',       color: '#f59e0b' },
   };
   const selected = roleInfo[formData.role_id] || roleInfo[4];
+  const showInternFields = formData.role_id === 4 || formData.role_id === 3;
 
   const inputStyle = {
     width: '100%', padding: '11px 14px',
@@ -71,7 +88,6 @@ const CreateUser = () => {
         </a>
       </div>
 
-      {/* Two column layout */}
       <div className="create-user-grid" style={{ display:'grid', gridTemplateColumns:'1fr 300px', gap:22, alignItems:'start' }}>
 
         {/* LEFT: Form */}
@@ -92,20 +108,8 @@ const CreateUser = () => {
           )}
 
           <form onSubmit={handleSubmit} autoComplete="off" style={{ display:'flex', flexDirection:'column', gap:20 }}>
-            <input
-              type="text"
-              name="fake_username"
-              autoComplete="username"
-              tabIndex={-1}
-              style={{ display: 'none' }}
-            />
-            <input
-              type="password"
-              name="fake_password"
-              autoComplete="current-password"
-              tabIndex={-1}
-              style={{ display: 'none' }}
-            />
+            <input type="text" name="fake_username" autoComplete="username" tabIndex={-1} style={{ display: 'none' }} />
+            <input type="password" name="fake_password" autoComplete="current-password" tabIndex={-1} style={{ display: 'none' }} />
 
             <div className="form-group">
               <label style={labelStyle}>Full Name</label>
@@ -116,13 +120,8 @@ const CreateUser = () => {
 
             <div className="form-group">
               <label style={labelStyle}>Email Address</label>
-              <input
-                type="email"
-                name="new_user_email"
-                id="new-user-email"
-                autoComplete="off"
-                data-lpignore="true"
-                data-1p-ignore="true"
+              <input type="email" name="new_user_email" id="new-user-email"
+                autoComplete="off" data-lpignore="true" data-1p-ignore="true"
                 placeholder="e.g. john@teamcomputers.com"
                 value={formData.email} onChange={handleChange} required disabled={loading} style={inputStyle}
                 onFocus={e => e.target.style.borderColor='#00b1b4'} onBlur={e => e.target.style.borderColor='#dde3f0'} />
@@ -131,13 +130,8 @@ const CreateUser = () => {
             <div className="form-group">
               <label style={labelStyle}>Password</label>
               <div style={{ display:'flex', gap:8 }}>
-                <input
-                  type={showPass ? 'text' : 'password'}
-                  name="new_user_password"
-                  id="new-user-password"
-                  autoComplete="new-password"
-                  data-lpignore="true"
-                  data-1p-ignore="true"
+                <input type={showPass ? 'text' : 'password'} name="new_user_password" id="new-user-password"
+                  autoComplete="new-password" data-lpignore="true" data-1p-ignore="true"
                   placeholder="Minimum 8 characters"
                   value={formData.password} onChange={handleChange} required disabled={loading}
                   style={{ ...inputStyle, flex:1, width:'auto' }}
@@ -151,21 +145,20 @@ const CreateUser = () => {
               </div>
             </div>
 
-            {/* Role selector — NO Admin option */}
+            {/* Role selector */}
             <div className="form-group">
               <label style={labelStyle}>Assign Role</label>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:10 }}>
                 {Object.entries(roleInfo).map(([id, info]) => {
                   const isSelected = formData.role_id === parseInt(id);
                   return (
-                    <label key={id}
-                      style={{
-                        display:'flex', flexDirection:'column', gap:3,
-                        padding:'13px 15px', borderRadius:10, cursor:'pointer',
-                        border: isSelected ? `2px solid ${info.color}` : '2px solid #dde3f0',
-                        background: isSelected ? info.color+'12' : '#fff',
-                        transition:'border-color 0.15s, background 0.15s',
-                      }}>
+                    <label key={id} style={{
+                      display:'flex', flexDirection:'column', gap:3,
+                      padding:'13px 15px', borderRadius:10, cursor:'pointer',
+                      border: isSelected ? `2px solid ${info.color}` : '2px solid #dde3f0',
+                      background: isSelected ? info.color+'12' : '#fff',
+                      transition:'border-color 0.15s, background 0.15s',
+                    }}>
                       <input type="radio" name="role_id" value={id}
                         checked={isSelected} onChange={handleChange}
                         style={{ position:'absolute', opacity:0, width:0, height:0 }} />
@@ -178,6 +171,53 @@ const CreateUser = () => {
                 })}
               </div>
             </div>
+
+            {/* Internship dates — only for Intern/Trainee */}
+            {showInternFields && (
+              <>
+                <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: 16 }}>
+                  <label style={{ ...labelStyle, marginBottom: 14, color: '#00b1b4' }}>
+                    Internship Details
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+                    <div className="form-group">
+                      <label style={labelStyle}>Start Date</label>
+                      <input type="date" name="internship_start"
+                        value={formData.internship_start} onChange={handleChange}
+                        disabled={loading} style={inputStyle}
+                        onFocus={e => e.target.style.borderColor='#00b1b4'}
+                        onBlur={e => e.target.style.borderColor='#dde3f0'} />
+                    </div>
+                    <div className="form-group">
+                      <label style={labelStyle}>End Date</label>
+                      <input type="date" name="internship_end"
+                        value={formData.internship_end} onChange={handleChange}
+                        disabled={loading} style={inputStyle}
+                        onFocus={e => e.target.style.borderColor='#00b1b4'}
+                        onBlur={e => e.target.style.borderColor='#dde3f0'} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+                    <div className="form-group">
+                      <label style={labelStyle}>Assign Manager</label>
+                      <select name="manager_id" value={formData.manager_id} onChange={handleChange}
+                        disabled={loading} style={{ ...inputStyle, cursor: 'pointer' }}>
+                        <option value="">— Select Manager —</option>
+                        {managers.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label style={labelStyle}>Assign Buddy</label>
+                      <select name="buddy_id" value={formData.buddy_id} onChange={handleChange}
+                        disabled={loading} style={{ ...inputStyle, cursor: 'pointer' }}>
+                        <option value="">— Select Buddy —</option>
+                        {buddies.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
 
             <button type="submit" disabled={loading}
               style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:8,
@@ -237,6 +277,10 @@ const CreateUser = () => {
               { label:'Email entered', done: !!formData.email    },
               { label:'Password set',  done: !!formData.password },
               { label:'Role assigned', done: true                },
+              ...(showInternFields ? [
+                { label:'Start date set', done: !!formData.internship_start },
+                { label:'End date set',   done: !!formData.internship_end   },
+              ] : []),
             ].map(({ label, done }) => (
               <div key={label}
                 style={{ display:'flex', alignItems:'center', gap:10, fontSize:13, padding:'7px 10px',
