@@ -181,6 +181,7 @@ function App() {
         {/* Manager / Intern / Buddy routes */}
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard user={user} /></ProtectedRoute>} />
         <Route path="/manager" element={<ProtectedRoute><ManagerPage /></ProtectedRoute>} />
+        <Route path="/manager/view-tasks" element={<ProtectedRoute><ManagerPage /></ProtectedRoute>} />
         <Route path="/my-tasks" element={<ProtectedRoute><InternTasks /></ProtectedRoute>} />
         <Route path="/attendance" element={<ProtectedRoute><Attendance /></ProtectedRoute>} />
         <Route path="/my-leaves" element={<ProtectedRoute><MyLeaves /></ProtectedRoute>} />

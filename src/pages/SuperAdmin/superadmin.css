@@ -181,6 +181,7 @@
   display: flex;
   align-items: center;
   gap: 14px;
+  min-width: 0;
 }
 
 .sa-menu-btn {
@@ -195,9 +196,12 @@
 }
 
 .sa-topbar-title {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: clamp(1rem, 0.95rem + 0.35vw, 1.2rem);
+  font-weight: 800;
+  letter-spacing: 0.02em;
   color: var(--sa-navy);
+  line-height: 1.2;
+  margin: 0;
 }
 
 .sa-topbar-sub {
@@ -397,6 +401,7 @@
 .sa-content {
   padding: 24px;
   flex: 1;
+  min-width: 0;
 }
 
 .sa-mobile-toggle,

@@ -235,7 +235,7 @@ function UserForm() {
               <label>{isEditMode ? 'New Password (leave blank to keep current)' : 'Password *'}</label>
               <input name="password" type="password" value={formValues.password}
                 onChange={handleChange} required={!isEditMode}
-                placeholder={isEditMode ? 'Leave blank to keep current' : 'Set initial password'} />
+                placeholder={isEditMode ? 'Leave blank to keep current' : 'Enter password'} />
             </div>
             <div className="form-group">
               <label>Mobile Number</label>

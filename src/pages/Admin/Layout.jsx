@@ -13,7 +13,7 @@ import {
 } from 'react-icons/fa'
 import { useAuth } from '../../context/authcontext.jsx'
 import api from '../../api/login_api.js'
-import { getNotifications, markAllNotificationsRead } from '../../api/api.js'
+import { getNotifications, markAllNotificationsRead, markNotificationRead } from '../../api/api.js'
 import '../SuperAdmin/superadmin.css'
 
 const API_BASE = api.defaults.baseURL
@@ -56,6 +56,33 @@ const NAV_ITEMS = [
 ]
 
 const MOBILE_BREAKPOINT = 900
+
+const resolveAdminNotificationRoute = (notification) => {
+  const payload = notification?.data || notification?.payload || {}
+  const type = String(notification?.type || payload?.type || '').toLowerCase()
+  const link = notification?.link || notification?.route || payload?.link || payload?.route || ''
+  const text = `${notification?.title || ''} ${notification?.message || ''}`.toLowerCase()
+
+  if (link && link.startsWith('/admin/')) {
+    return link
+  }
+
+  if (
+    type.includes('profile') ||
+    text.includes('profile change') ||
+    text.includes('profile update') ||
+    text.includes('updated profile') ||
+    text.includes('contact info')
+  ) {
+    return '/admin/documents?tab=profiles'
+  }
+
+  if (type.includes('leave') || text.includes('leave')) {
+    return '/admin/leaves'
+  }
+
+  return '/admin/documents'
+}
 
 function AdminLayout() {
   const navigate = useNavigate()
@@ -304,19 +331,17 @@ function AdminLayout() {
                         ? new Date(createdAt).toLocaleString()
                         : 'Unknown time'
 
-                      const handleNotifClick = () => {
+                      const handleNotifClick = async () => {
                         setNotifOpen(false)
-                        const type = notification.type || ''
-                        const link = notification.link || ''
-                        if (link && link.startsWith('/admin/')) {
-                          navigate(link)
-                        } else if (type === 'profile_update' || type === 'profile_change') {
-                          navigate('/admin/documents?tab=profiles')
-                        } else if (type === 'leave_request' || type === 'leave') {
-                          navigate('/admin/leaves')
-                        } else {
-                          navigate('/admin/documents')
+                        try {
+                          await markNotificationRead(notification.id)
+                        } catch {
+                          // Keep navigation responsive even if marking read fails.
                         }
+                        setNotifications((prev) =>
+                          prev.map((item) => item.id === notification.id ? { ...item, is_read: true } : item)
+                        )
+                        navigate(resolveAdminNotificationRoute(notification))
                       }
 
                       return (

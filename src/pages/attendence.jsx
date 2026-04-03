@@ -123,142 +123,114 @@ function InternAttendance() {
 
   if (loading) return <div style={{ padding: 40, color: '#6b7280' }}>Loading attendance...</div>
 
- return (
+  const sortedHistory = sortByLatest(history)
+  const todayLabel = new Date().toLocaleDateString('en-IN', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+  const statusKey = today?.status || 'present'
+  const todayStyle = STATUS_STYLE[statusKey] || STATUS_STYLE.present
+  return (
     <div className="dashboard">
-
-      {/* ── TAB BAR ── */}
-      <div style={{ display: 'flex', borderBottom: '2px solid #e5e7eb', marginBottom: 24 }}>
+      <div style={{ display: 'flex', gap: 10, marginBottom: 24, flexWrap: 'wrap' }}>
         {[
-          { key: 'attendance', label: '🕐 Attendance' },
-          { key: 'leaves',     label: '📅 My Leaves'  },
-        ].map(t => (
+          { key: 'attendance', label: 'Attendance' },
+          { key: 'leaves', label: 'My Leaves' },
+        ].map((tabItem) => (
           <button
-            key={t.key}
-            onClick={() => setActiveTab(t.key)}
+            key={tabItem.key}
+            type="button"
+            onClick={() => setActiveTab(tabItem.key)}
             style={{
-              padding: '10px 22px',
-              background: 'none',
-              border: 'none',
-              fontWeight: activeTab === t.key ? 700 : 400,
-              color: activeTab === t.key ? '#00b1b4' : '#6b7280',
-              borderBottom: activeTab === t.key ? '2px solid #00b1b4' : '2px solid transparent',
+              padding: '10px 18px',
+              borderRadius: 999,
+              border: activeTab === tabItem.key ? '1px solid #003b5c' : '1px solid #dbe4ef',
+              background: activeTab === tabItem.key ? '#003b5c' : '#fff',
+              color: activeTab === tabItem.key ? '#fff' : '#6b7280',
+              fontWeight: 700,
+              fontSize: 13,
               cursor: 'pointer',
-              fontSize: 14,
-              marginBottom: -2,
+              boxShadow: activeTab === tabItem.key ? '0 12px 28px rgba(0, 59, 92, 0.16)' : 'none',
             }}
           >
-            {t.label}
+            {tabItem.label}
           </button>
         ))}
       </div>
 
-      {/* ── ATTENDANCE TAB ── */}
       {activeTab === 'attendance' && (
         <>
-          <div className="dashboard-header">
-            <div>
-              <h2>My Attendance</h2>
-              <p>Track your daily check-in and check-out times.</p>
+          <section className="card" style={{ marginBottom: 22, border: '1px solid #dbe4ef' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, flexWrap: 'wrap', marginBottom: 18 }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: '#1f2937' }}>{todayLabel}</div>
+              <span style={{ padding: '6px 12px', borderRadius: 999, fontSize: 12, fontWeight: 700, textTransform: 'capitalize', background: todayStyle.bg, color: todayStyle.color, border: `1px solid ${todayStyle.border}` }}>{statusKey.replace('_', ' ')}</span>
             </div>
-            <div style={{ fontSize: 14, color: '#6b7280' }}>
-              {new Date().toLocaleDateString('en-IN', {
-                weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
-              })}
-            </div>
-          </div>
-
-          <section className="card" style={{ marginBottom: 24 }}>
-            <div className="card-header">
-              <div>
-                <h3>Today's Attendance</h3>
-                <p>Mark your arrival and departure.</p>
-              </div>
-            </div>
-
-            {actionMsg && (
-              <p style={{ color: '#16a34a', background: '#f0fdf4', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontWeight: 600 }}>
-                {actionMsg}
-              </p>
-            )}
-            {actionErr && (
-              <p style={{ color: '#dc2626', background: '#fef2f2', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontWeight: 600 }}>
-                {actionErr}
-              </p>
-            )}
-
-            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 20 }}>
-              <button
-                onClick={handleCheckIn}
-                disabled={busy || checkedIn}
-                style={{
-                  padding: '12px 28px', borderRadius: 10, border: 'none', fontSize: 15, fontWeight: 700,
-                  cursor: checkedIn ? 'not-allowed' : 'pointer',
-                  background: checkedIn ? '#e5e7eb' : '#00b1b4',
-                  color: checkedIn ? '#9ca3af' : '#fff',
-                }}
-              >
+            {actionMsg && <p style={{ color: '#166534', background: '#f0fdf4', padding: '10px 14px', borderRadius: 10, margin: '0 0 16px', fontWeight: 600, border: '1px solid #bbf7d0' }}>{actionMsg}</p>}
+            {actionErr && <p style={{ color: '#b91c1c', background: '#fef2f2', padding: '10px 14px', borderRadius: 10, margin: '0 0 16px', fontWeight: 600, border: '1px solid #fecaca' }}>{actionErr}</p>}
+            <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 18 }}>
+              <button type="button" onClick={handleCheckIn} disabled={busy || checkedIn} style={{ padding: '12px 20px', minWidth: 140, borderRadius: 12, border: 'none', background: checkedIn ? '#e5e7eb' : '#00b1b4', color: checkedIn ? '#9ca3af' : '#fff', fontSize: 14, fontWeight: 800, cursor: checkedIn ? 'not-allowed' : 'pointer' }}>
                 {checkedIn ? 'Checked In' : busy ? 'Processing...' : 'Check In'}
               </button>
-
-              <button
-                onClick={handleCheckOut}
-                disabled={busy || !checkedIn || checkedOut}
-                style={{
-                  padding: '12px 28px', borderRadius: 10, border: 'none', fontSize: 15, fontWeight: 700,
-                  cursor: !checkedIn || checkedOut ? 'not-allowed' : 'pointer',
-                  background: checkedOut ? '#e5e7eb' : checkedIn ? '#003b5c' : '#e5e7eb',
-                  color: !checkedIn || checkedOut ? '#9ca3af' : '#fff',
-                }}
-              >
+              <button type="button" onClick={handleCheckOut} disabled={busy || !checkedIn || checkedOut} style={{ padding: '12px 20px', minWidth: 140, borderRadius: 12, border: '1px solid #dbe4ef', background: checkedOut ? '#e5e7eb' : '#fff', color: checkedOut ? '#9ca3af' : '#003b5c', fontSize: 14, fontWeight: 800, cursor: !checkedIn || checkedOut ? 'not-allowed' : 'pointer' }}>
                 {checkedOut ? 'Checked Out' : busy ? 'Processing...' : 'Check Out'}
               </button>
             </div>
-
-            <div style={{ display: 'flex', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
               {[
-                { label: 'CHECK IN',  value: formatTime(today?.check_in_time) },
-                { label: 'CHECK OUT', value: formatTime(today?.check_out_time) },
-                { label: 'STATUS',    value: today?.status?.replace('_', ' ') || 'Not marked' },
-              ].map(item => (
-                <div key={item.label} style={{ flex: 1, background: '#f8fafc', borderRadius: 10, padding: '14px 18px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontSize: 11, color: '#6b7280', marginBottom: 4 }}>{item.label}</div>
-                  <div style={{ fontSize: 18, fontWeight: 700, color: '#003b5c', textTransform: 'capitalize' }}>{item.value}</div>
+                { label: 'Check In', value: formatTime(today?.check_in_time) },
+                { label: 'Check Out', value: formatTime(today?.check_out_time) },
+                { label: 'Status', value: statusKey.replace('_', ' ') },
+              ].map((item) => (
+                <div key={item.label} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 14, padding: '14px 16px' }}>
+                  <div style={{ fontSize: 11, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>{item.label}</div>
+                  <div style={{ fontSize: 18, fontWeight: 800, color: '#0f172a', textTransform: 'capitalize' }}>{item.value}</div>
                 </div>
               ))}
             </div>
           </section>
 
-          <section className="card">
-            <div className="card-header">
+          <section className="card" style={{ padding: 0, overflow: 'hidden', border: '1px solid #dbe4ef' }}>
+            <div style={{ padding: '18px 20px', borderBottom: '1px solid #e6edf5', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
               <div>
-                <h3>Attendance History</h3>
-                <p>Your last 30 days of records.</p>
+                <h3 style={{ margin: 0, color: '#0f172a', fontSize: 22 }}>Attendance History</h3>
+                <p style={{ margin: '6px 0 0', color: '#6b7280', fontSize: 13 }}>Recent attendance records from your intern management account.</p>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 12, padding: '10px 14px' }}>
+                <div style={{ fontSize: 12, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Records</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: '#0f172a' }}>{sortedHistory.length}</div>
               </div>
             </div>
-            {history.length === 0 ? (
-              <p style={{ padding: '20px', color: '#9ca3af' }}>No attendance records yet.</p>
+            {sortedHistory.length === 0 ? (
+              <div style={{ padding: 28, color: '#94a3b8', textAlign: 'center' }}>No attendance records yet.</div>
             ) : (
-              <div className="table-wrapper">
-                <table className="table">
-                  <thead>
+              <div className="table-wrapper" style={{ border: 'none', borderRadius: 0 }}>
+                <table className="table" style={{ fontSize: 13 }}>
+                  <thead style={{ background: '#f8fbff' }}>
                     <tr>
-                      <th>Date</th><th>Check In</th><th>Check Out</th><th>Status</th><th>Remarks</th>
+                      <th>Date</th>
+                      <th>Check In</th>
+                      <th>Check Out</th>
+                      <th>Status</th>
+                      <th>Remarks</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {history.map(record => {
-                      const s = STATUS_STYLE[record.status] || STATUS_STYLE.present
+                    {sortedHistory.map((record) => {
+                      const recordStatus = getRecordStatus(record)
+                      const style = STATUS_STYLE[recordStatus] || STATUS_STYLE.present
                       return (
-                        <tr key={record.id}>
-                          <td><strong>{formatDate(record.attendance_date)}</strong></td>
-                          <td>{formatTime(record.check_in_time)}</td>
-                          <td>{formatTime(record.check_out_time)}</td>
+                        <tr key={record.id || `${getRecordDate(record)}-${recordStatus}`}>
+                          <td><strong style={{ color: '#0f172a' }}>{formatDate(getRecordDate(record))}</strong></td>
+                          <td style={{ fontWeight: 700, color: '#f97316' }}>{formatTime(record.check_in_time)}</td>
+                          <td style={{ fontWeight: 700, color: '#334155' }}>{formatTime(record.check_out_time)}</td>
                           <td>
-                            <span style={{ padding: '2px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600, textTransform: 'capitalize', background: s.bg, color: s.color, border: `1px solid ${s.border}` }}>
-                              {record.status?.replace('_', ' ')}
+                            <span style={{ padding: '4px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, textTransform: 'capitalize', background: style.bg, color: style.color, border: `1px solid ${style.border}` }}>
+                              {recordStatus.replace('_', ' ')}
                             </span>
                           </td>
-                          <td style={{ color: '#6b7280' }}>{record.remarks || '-'}</td>
+                          <td style={{ color: '#64748b' }}>{record.remarks || '-'}</td>
                         </tr>
                       )
                     })}
@@ -270,13 +242,10 @@ function InternAttendance() {
         </>
       )}
 
-      {/* ── LEAVES TAB ── */}
       {activeTab === 'leaves' && <MyLeaves onLeaveChanged={fetchAll} />}
-
     </div>
   )
 }
-
 function ManagerAttendance() {
   const [interns, setInterns] = useState([])
   const [selectedIntern, setSelectedIntern] = useState(null)

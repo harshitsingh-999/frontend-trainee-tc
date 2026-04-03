@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react'
 import toast from 'react-hot-toast'
 import { FiFilter, FiX, FiCheck } from 'react-icons/fi'
 import { getPendingLeaveRequests, approveLeave, rejectLeave, getAllLeaveRequests } from '../api/api'
+import { useAuth } from '../context/authcontext.jsx'
 
 // Status Badge Component
 function StatusBadge({ status }) {
@@ -57,6 +58,7 @@ function LeaveTypeBadge({ type }) {
 }
 
 export default function LeaveApproval() {
+  const { user } = useAuth()
   const [leaves, setLeaves] = useState([])
   const [filteredLeaves, setFilteredLeaves] = useState([])
   const [loading, setLoading] = useState(true)
@@ -69,10 +71,9 @@ export default function LeaveApproval() {
 
   // Determine user role
   useEffect(() => {
-    const userRole = localStorage.getItem('userRole')
-    const roleId = localStorage.getItem('roleId')
-    setIsAdmin(userRole === 'Admin' || Number(roleId) === 1)
-  }, [])
+    const roleName = String(user?.role || '').toLowerCase()
+    setIsAdmin(Number(user?.role_id) === 1 || roleName === 'admin')
+  }, [user])
 
   // Fetch pending leave requests
   const fetchLeaves = useCallback(async () => {
@@ -117,12 +118,24 @@ export default function LeaveApproval() {
     return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
   }
 
+  const getLeaveId = (leave) => (
+    leave?.request_id ||
+    leave?.leave_request_id ||
+    leave?.leaveRequestId ||
+    leave?.request?.id ||
+    leave?.leave_request?.id ||
+    leave?.leaveRequest?.id ||
+    leave?.leave_id ||
+    leave?.id ||
+    leave?.attendance_id
+  )
+
   // Handle approve
   const handleApprove = async () => {
     if (!selectedLeave) return
     try {
       setActionLoading(true)
-      await approveLeave(selectedLeave.id, {})
+      await approveLeave(getLeaveId(selectedLeave), {})
       toast.success('Leave approved successfully')
       setReviewModal(false)
       setSelectedLeave(null)
@@ -144,7 +157,7 @@ export default function LeaveApproval() {
     }
     try {
       setActionLoading(true)
-      await rejectLeave(selectedLeave.id, { rejection_reason: rejectionReason })
+      await rejectLeave(getLeaveId(selectedLeave), { rejection_reason: rejectionReason })
       toast.success('Leave rejected successfully')
       setReviewModal(false)
       setSelectedLeave(null)

@@ -163,6 +163,9 @@ axiosClient.interceptors.response.use(
       }
     } else {
       // Don't show toast for 401 as it redirects to login
+      if (originalRequest?.skipErrorToast) {
+        return Promise.reject(error);
+      }
       toast.error(message);
     }
 

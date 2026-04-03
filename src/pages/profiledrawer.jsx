@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react'
 import api from '../api/login_api.js'
 import { useAuth } from '../context/authcontext.jsx'
 import AvatarEditor from 'react-avatar-editor'
-import { uploadInternDocument, getMyDocuments } from '../api/api.js'
+import { uploadInternDocument, getMyDocuments, createProfileChangeRequest } from '../api/api.js'
 import toast from 'react-hot-toast'
 
 const ROLE_LABELS = { 1: 'Admin', 2: 'Manager', 3: 'Buddy', 4: 'Intern' }
@@ -101,6 +101,7 @@ export default function ProfileDrawer({ open, onClose }) {
   const [isNew, setIsNew]         = useState(false)
 
   const [form, setForm] = useState({
+    email: '',
     phone: '', address: '',
     college_name: '', course: '', batch_year: '',
     enrollment_date: '', expected_end_date: '',
@@ -141,6 +142,7 @@ export default function ProfileDrawer({ open, onClose }) {
           const isNewUser = !data.trainee
           setIsNew(isNewUser)
           setForm({
+            email:             data.user.email                  || user?.email || '',
             phone:             data.user.phone                  || '',
             address:           data.user.address                || '',
             college_name:      data.trainee?.college_name       || '',
@@ -219,7 +221,61 @@ export default function ProfileDrawer({ open, onClose }) {
     setError('')
     setSuccess('')
     try {
-      const res = await api.put('/intern/profile', form)
+      if (!isNew && profile?.user) {
+        const nextValues = {
+          email: form.email?.trim() || '',
+          phone: form.phone?.trim() || '',
+          address: form.address?.trim() || '',
+          college_name: form.college_name?.trim() || '',
+          course: form.course?.trim() || '',
+          batch_year: form.batch_year?.toString().trim() || '',
+          enrollment_date: form.enrollment_date || '',
+          expected_end_date: form.expected_end_date || '',
+          gpa: form.gpa?.toString().trim() || '',
+          certifications: form.certifications?.trim() || '',
+        }
+
+        const currentValues = {
+          email: profile.user.email || user?.email || '',
+          phone: profile.user.phone || '',
+          address: profile.user.address || '',
+          college_name: profile.trainee?.college_name || '',
+          course: profile.trainee?.course || '',
+          batch_year: profile.trainee?.batch_year?.toString() || '',
+          enrollment_date: profile.trainee?.enrollment_date || '',
+          expected_end_date: profile.trainee?.expected_end_date || '',
+          gpa: profile.trainee?.gpa?.toString() || '',
+          certifications: profile.trainee?.certifications || '',
+        }
+
+        const changedEntries = Object.entries(nextValues).filter(([key, value]) => currentValues[key] !== value)
+        if (changedEntries.length === 0) {
+          setSuccess('No profile changes to submit.')
+          setEditing(false)
+          return
+        }
+
+        const newValues = Object.fromEntries(changedEntries)
+        const oldValues = Object.fromEntries(changedEntries.map(([key]) => [key, currentValues[key]]))
+
+        await createProfileChangeRequest({
+          new_values: newValues,
+          old_values: oldValues,
+        })
+
+        setProfile(prev => (
+          prev ? {
+            ...prev,
+            trainee: prev.trainee ? { ...prev.trainee, current_status: 'pending_approval' } : prev.trainee,
+          } : prev
+        ))
+        setEditing(false)
+        setSuccess('Profile change request submitted. Admin will be notified for approval.')
+        return
+      }
+
+      const { email, ...profilePayload } = form
+      const res = await api.put('/intern/profile', profilePayload)
       setProfile(res.data.data)
       setIsNew(false)
       setEditing(false)
@@ -236,6 +292,7 @@ export default function ProfileDrawer({ open, onClose }) {
     setError('')
     if (profile) {
       setForm({
+        email:             profile.user.email                 || user?.email || '',
         phone:             profile.user.phone                 || '',
         address:           profile.user.address               || '',
         college_name:      profile.trainee?.college_name      || '',
@@ -493,6 +550,12 @@ export default function ProfileDrawer({ open, onClose }) {
                   {/* Contact */}
                   <div style={{ marginBottom: 18 }}>
                     <SectionLabel>Contact</SectionLabel>
+                    {!isNew && (
+                      <div className="form-group" style={{ marginBottom: 10 }}>
+                        <label>Email Address</label>
+                        <input name="email" type="email" value={form.email} onChange={handleChange} placeholder="name@company.com" />
+                      </div>
+                    )}
                     <div className="form-group" style={{ marginBottom: 10 }}>
                       <label>Phone Number</label>
                       <input name="phone" value={form.phone} onChange={handleChange} placeholder="+91-" />

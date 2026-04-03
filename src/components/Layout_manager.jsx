@@ -1,3 +1,6 @@
+// 
+
+
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
@@ -41,7 +44,7 @@ const resolveNotifRoute = (notification, roleId) => {
   if (text.includes('leave'))      return Number(roleId) === 2 ? '/manager' : '/my-leaves'
   if (text.includes('document'))   return Number(roleId) === 1 ? '/admin/documents' : '/notifications'
   if (text.includes('profile'))    return Number(roleId) === 1 ? '/admin/profiles' : '/notifications'
-  if (text.includes('task'))       return Number(roleId) === 2 ? '/manager' : '/my-tasks'
+  if (text.includes('task'))       return Number(roleId) === 2 ? '/manager/view-tasks' : '/my-tasks'
   if (text.includes('attendance')) return '/attendance'
   return '/notifications'
 }
@@ -53,6 +56,7 @@ const NAV_LINKS = [
   { to: '/notifications',       label: 'Notifications',   subtitle: 'View all system notifications and alerts.',                 icon: <FaBell />,          roles: [1, 2, 3, 4] },
   { to: '/attendance',          label: 'Attendance',      subtitle: 'Review daily attendance and leave information.',            icon: <FaClipboardList />, roles: [1, 2, 3, 4] },
   { to: '/my-tasks',            label: 'My Tasks',        subtitle: 'Track assigned tasks and current delivery work.',           icon: <FaTasks />,         roles: [4] },
+  { to: '/manager/view-tasks',  label: 'View Task',       subtitle: 'View and manage task assignments for your interns.',       icon: <FaTasks />,         roles: [2] },
   { to: '/my-leaves',           label: 'My Leaves',       subtitle: 'Manage leave history and pending leave requests.',          icon: <FaCalendarAlt />,   roles: [4] },
   { to: '/leaves/approval',     label: 'Leave Approvals', subtitle: 'Review and approve intern leave requests.',                 icon: <FaCalendarAlt />,   roles: [2] },
   { to: '/calendar',            label: 'Calendar',        subtitle: 'Check schedules, leaves, and important upcoming dates.',    icon: <FaCalendarAlt />,   roles: [1, 2, 3, 4] },
@@ -73,9 +77,9 @@ function LayoutManager({ children }) {
   const [profileOpen, setProfileOpen] = useState(false)
   const [notifications, setNotifications] = useState([])
   const [notifOpen, setNotifOpen] = useState(false)
-  const [bellRinging, setBellRinging] = useState(false)   // FIX 11
+  const [bellRinging, setBellRinging] = useState(false)
   const dropdownRef = useRef(null)
-  const contentRef  = useRef(null)                         // FIX 15
+  const contentRef  = useRef(null)
   const unreadCount = notifications.filter((n) => !n.is_read).length
 
   const fetchNotifications = useCallback(async () => {

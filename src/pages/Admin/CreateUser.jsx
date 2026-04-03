@@ -132,7 +132,7 @@ const CreateUser = () => {
               <div style={{ display:'flex', gap:8 }}>
                 <input type={showPass ? 'text' : 'password'} name="new_user_password" id="new-user-password"
                   autoComplete="new-password" data-lpignore="true" data-1p-ignore="true"
-                  placeholder="Minimum 8 characters"
+                  placeholder="Enter password"
                   value={formData.password} onChange={handleChange} required disabled={loading}
                   style={{ ...inputStyle, flex:1, width:'auto' }}
                   onFocus={e => e.target.style.borderColor='#00b1b4'} onBlur={e => e.target.style.borderColor='#dde3f0'} />

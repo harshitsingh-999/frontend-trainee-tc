@@ -104,8 +104,18 @@ export const getLeaveBalance = () => api.get('/leaves/balance');
 
 // Manager endpoints
 export const getPendingLeaveRequests = () => api.get('/leaves/pending-requests');
-export const approveLeave = (id, data) => api.patch(`/leaves/${id}/approve`, data);
-export const rejectLeave = (id, data) => api.patch(`/leaves/${id}/reject`, data);
+
+const tryLeaveActionRoutes = async (id, action, data = {}) => {
+  const normalizedAction = action === 'approve' ? 'approve' : 'reject';
+  return api.put(
+    `/manager/leave-requests/${id}`,
+    { action: normalizedAction, ...(data || {}) },
+    { skipSuccessToast: true }
+  );
+};
+
+export const approveLeave = (id, data) => tryLeaveActionRoutes(id, 'approve', data);
+export const rejectLeave = (id, data) => tryLeaveActionRoutes(id, 'reject', data);
 
 // Admin endpoints
 export const getAllLeaveRequests = (params = {}) => api.get('/leaves/all', { params });

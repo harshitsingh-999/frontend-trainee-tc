@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import api from '../api/login_api.js'
 import { useAuth } from '../context/authcontext.jsx'
 
@@ -296,11 +297,11 @@ function InternDetailModal({ trainee, onClose }) {
   return (
     <div
       style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 16 }}
+        display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1500, padding: 16, overflowY: 'auto' }}
       onClick={e => { if (e.target === e.currentTarget) onClose() }}
     >
       <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 760,
-        maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 25px 60px rgba(0,0,0,0.25)' }}>
+        maxHeight: 'min(90vh, 960px)', overflowY: 'auto', boxShadow: '0 25px 60px rgba(0,0,0,0.25)', margin: 'auto' }}>
 
         {/* Header */}
         <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb',
@@ -619,6 +620,9 @@ function AllInternsTab({ allInterns, myId, onAssigned }) {
 
 export default function Manager() {
   const { user } = useAuth()
+  const location = useLocation()
+  const navigate = useNavigate()
+  const isTaskRoute = location.pathname.startsWith('/manager/view-tasks')
 
   // data
   const [interns,        setInterns]        = useState([])
@@ -631,7 +635,7 @@ export default function Manager() {
   const [error,          setError]          = useState('')
 
   // tabs
-  const [tab, setTab] = useState('overview')
+  const [tab, setTab] = useState(isTaskRoute ? 'tasks' : 'overview')
   const [taskStatusFilter, setTaskStatusFilter] = useState('')
 
   // task form
@@ -694,6 +698,13 @@ export default function Manager() {
     const id = setInterval(fetchAll, 60000)
     return () => clearInterval(id)
   }, [fetchAll])
+
+  useEffect(() => {
+    setTab((prev) => {
+      if (isTaskRoute) return 'tasks'
+      return prev === 'tasks' ? 'overview' : prev
+    })
+  }, [isTaskRoute])
 
   // ── task handlers ──
   const openCreate = () => { setEditingTask(null); setTaskForm(EMPTY_TASK); setTaskError(''); setShowTaskForm(true) }
@@ -796,7 +807,6 @@ export default function Manager() {
     { key: 'overview',          label: ' Overview' },
     { key: 'interns',           label: ` My Interns (${interns.length})` },
     // { key: 'all-interns',       label: ` All Interns (${allInterns.length})` },
-    { key: 'tasks',             label: ` Tasks (${tasks.length})` },
     { key: 'project-progress',  label: ' Project Progress' },
     { key: 'leaves',            label: ` Leaves${pendingLeaves.length ? ` (${pendingLeaves.length} pending)` : ''}` },
   ]
@@ -812,26 +822,28 @@ export default function Manager() {
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
           <button className="btn-primary btn-small" onClick={openCreate}>+ New Task</button>
-          <button className="btn-secondary btn-small" onClick={() => { setTab('leaves'); setLeaveTab('assign') }}>+ Assign Leave</button>
+          <button className="btn-secondary btn-small" onClick={() => { if (isTaskRoute) navigate('/manager'); setTab('leaves'); setLeaveTab('assign') }}>+ Assign Leave</button>
         </div>
       </div>
 
       {error && <p className="error-text" style={{ marginBottom: 16 }}>{error}</p>}
 
       {/* ── Tabs ── */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e5e7eb', flexWrap: 'wrap' }}>
-        {TABS.map(t => (
-          <button key={t.key} onClick={() => setTab(t.key)} style={{
-            padding: '8px 18px', border: 'none', cursor: 'pointer', background: 'none',
-            fontWeight: tab === t.key ? 700 : 400,
-            color: tab === t.key ? '#00b1b4' : '#6b7280', fontSize: 14,
-            borderBottom: tab === t.key ? '2px solid #00b1b4' : '2px solid transparent',
-            marginBottom: -2,
-          }}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      {!isTaskRoute && (
+        <div style={{ display: 'flex', gap: 4, marginBottom: 20, borderBottom: '2px solid #e5e7eb', flexWrap: 'wrap' }}>
+          {TABS.map(t => (
+            <button key={t.key} onClick={() => setTab(t.key)} style={{
+              padding: '8px 18px', border: 'none', cursor: 'pointer', background: 'none',
+              fontWeight: tab === t.key ? 700 : 400,
+              color: tab === t.key ? '#00b1b4' : '#6b7280', fontSize: 14,
+              borderBottom: tab === t.key ? '2px solid #00b1b4' : '2px solid transparent',
+              marginBottom: -2,
+            }}>
+              {t.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ══════════════════════════════════════════════════════
           OVERVIEW TAB
@@ -845,7 +857,7 @@ export default function Manager() {
               <div className="stat-label">My Interns</div>
               <div className="stat-value">{interns.length}</div>
             </div>
-            <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => setTab('tasks')}>
+            <div className="stat-card" style={{ cursor: 'pointer' }} onClick={() => navigate('/manager/view-tasks')}>
               <div className="stat-label">Total Tasks</div>
               <div className="stat-value">{tasks.length}</div>
             </div>
@@ -855,7 +867,7 @@ export default function Manager() {
             </div>
             <div className="stat-card"
               style={{ cursor: reviewTasks > 0 ? 'pointer' : 'default', background: reviewTasks > 0 ? '#faf5ff' : undefined, border: reviewTasks > 0 ? '1px solid #e9d5ff' : undefined }}
-              onClick={() => { if (reviewTasks > 0) { setTaskStatusFilter('review'); setTab('tasks') } }}>
+              onClick={() => { if (reviewTasks > 0) { setTaskStatusFilter('review'); navigate('/manager/view-tasks') } }}>
               <div className="stat-label" style={{ color: reviewTasks > 0 ? '#7c3aed' : undefined }}>In Review</div>
               <div className="stat-value" style={{ color: reviewTasks > 0 ? '#7c3aed' : undefined }}>{reviewTasks}</div>
               {reviewTasks > 0 && <div style={{ fontSize: 10, color: '#7c3aed', marginTop: 2 }}>Click to review →</div>}
@@ -1376,8 +1388,8 @@ export default function Manager() {
           SUBMISSIONS MODAL
       ══════════════════════════════════════════════════════ */}
       {submissionTask && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1100, padding: 16 }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 700, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1500, padding: 16, overflowY: 'auto' }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 24, width: '100%', maxWidth: 700, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: 'min(90vh, 920px)', overflowY: 'auto', margin: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', gap: 12, marginBottom: 16 }}>
               <div>
                 <h3 style={{ margin: 0 }}>Task Submissions</h3>
@@ -1441,8 +1453,8 @@ export default function Manager() {
           TASK FORM MODAL
       ══════════════════════════════════════════════════════ */}
       {showTaskForm && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, padding: 16 }}>
-          <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: '100%', maxWidth: 520, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1500, padding: 16, overflowY: 'auto' }}>
+          <div style={{ background: '#fff', borderRadius: 16, padding: 28, width: '100%', maxWidth: 520, boxShadow: '0 20px 60px rgba(0,0,0,0.2)', maxHeight: 'min(90vh, 920px)', overflowY: 'auto', margin: 'auto' }}>
             <h3 style={{ marginTop: 0 }}>{editingTask ? 'Edit Task' : 'Create New Task'}</h3>
             <form onSubmit={submitTask} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div className="form-group"><label>Title *</label><input name="title" value={taskForm.title} onChange={handleTaskChange} required placeholder="Task title" /></div>
@@ -1515,9 +1527,9 @@ export default function Manager() {
           EVALUATION MODAL
       ══════════════════════════════════════════════════════ */}
       {evalIntern && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1200, padding: 16 }}
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1500, padding: 16, overflowY: 'auto' }}
           onClick={e => { if (e.target === e.currentTarget) setEvalIntern(null) }}>
-          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 500, boxShadow: '0 25px 60px rgba(0,0,0,0.25)' }}>
+          <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 500, boxShadow: '0 25px 60px rgba(0,0,0,0.25)', margin: 'auto' }}>
             <div style={{ padding: '20px 24px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <h3 style={{ margin: 0, color: '#003b5c' }}>Evaluate Intern</h3>
@@ -1567,3 +1579,4 @@ export default function Manager() {
     </div>
   )
 }
+

@@ -62,7 +62,7 @@ function ResetPassword() {
             <input
               id="password"
               type="password"
-              placeholder="Min 8 chars, upper, lower, number, symbol"
+              placeholder="Enter new password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
