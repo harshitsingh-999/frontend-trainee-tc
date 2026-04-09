@@ -7,22 +7,21 @@ import {
   FaUserShield, FaToggleOn, FaCog, FaSignOutAlt, FaChevronDown,
   FaKey, FaClipboardList, FaBuilding, FaTimes, FaEdit, FaTrash,
   FaBell, FaBan, FaSpinner, FaCheckCircle, FaTimesCircle,
-  FaChartPie, FaUsers
+  FaChartPie, FaUsers, FaSearch, FaChevronRight, FaInbox
 } from "react-icons/fa";
 import axiosClient from "../../api/axiosClient";
-import { getNotifications, markAllNotificationsRead } from "../../api/api.js";
+import { getNotifications, markAllNotificationsRead, markNotificationRead } from "../../api/api.js";
 import "./superadmin.css";
 import { useAuth } from '../../context/authcontext.jsx'
+import {
+  formatNotificationTime,
+  readActiveNotificationId,
+  storeActiveNotificationId,
+} from "../../utils/notifications.js";
 
 /* ── Role IDs ── */
 // 1=Admin, 2=Manager, 3=Buddy/Trainee, 4=Intern, 5=SuperAdmin
 const ROLE = { SUPERADMIN: 5, ADMIN: 1, MANAGER: 2, BUDDY: 3, INTERN: 4 };
-const API_BASE = import.meta.env.VITE_API_BASE_URL
-  ? import.meta.env.VITE_API_BASE_URL.replace(/\/api\/v1\/?$/, "")
-  : import.meta.env.VITE_API_URL
-    ? import.meta.env.VITE_API_URL.replace(/\/api\/v1\/?$/, "")
-    : "http://localhost:7357";
-
 /* ── Modal ── */
 function Modal({ title, onClose, children }) {
   return (
@@ -66,6 +65,9 @@ function SuperAdmin() {
   const [notifications, setNotifications] = useState([]);
   const [notifOpen, setNotifOpen] = useState(false);
   const [bellRinging, setBellRinging] = useState(false); // FIX 11
+  const [managerSearch, setManagerSearch] = useState("");
+  const [internSearch, setInternSearch] = useState("");
+  const [expandedNotificationId, setExpandedNotificationId] = useState(null);
   const dropdownRef = useRef(null);
   const unreadCount = notifications.filter((notification) => !notification.is_read).length;
 
@@ -127,6 +129,13 @@ function SuperAdmin() {
       window.clearInterval(intervalId);
     };
   }, []);
+
+  useEffect(() => {
+    const storedNotificationId = readActiveNotificationId();
+    if (storedNotificationId) {
+      setExpandedNotificationId(String(storedNotificationId));
+    }
+  }, [notifications]);
 
   /* ── FETCH ALL USERS ── */
   const normalizeUsersPayload = (payload) => {
@@ -267,42 +276,36 @@ function SuperAdmin() {
     } catch { /* non-blocking */ }
   };
 
+  const handleMarkAllRead = async () => {
+    try {
+      await markAllNotificationsRead();
+      setNotifications((prev) => prev.map((notification) => ({ ...notification, is_read: true })));
+      toast.success("All notifications marked as read");
+    } catch {
+      toast.error("Failed to mark all notifications as read");
+    }
+  };
+
   // FIX 4: notifications now route to the correct SuperAdmin page
-  const handleNotificationClick = (notification) => {
+  const handleNotificationClick = async (notification) => {
     setNotifOpen(false);
+    setExpandedNotificationId((current) =>
+      String(current) === String(notification.id) ? null : String(notification.id)
+    );
 
-    const payload = notification?.data || notification?.payload || {};
-    const fileCandidate =
-      notification?.file_url || notification?.document_url || notification?.url ||
-      notification?.link_url || payload?.file_url || payload?.document_url ||
-      payload?.filePath || payload?.file_path || payload?.document_path || payload?.path || null;
+    if (notification.is_read) return;
 
-    if (typeof fileCandidate === "string" && fileCandidate.trim()) {
-      const url = /^https?:\/\//i.test(fileCandidate)
-        ? fileCandidate
-        : `${API_BASE}${fileCandidate.startsWith("/") ? "" : "/"}${fileCandidate}`;
-      window.open(url, "_blank", "noopener,noreferrer");
-      return;
+    try {
+      await markNotificationRead(notification.id);
+    } catch {
+      // Keep the notification center usable even if read state fails.
     }
 
-    const candidateRoute = notification?.route || notification?.link ||
-      payload?.route || payload?.link || payload?.url || null;
-
-    if (typeof candidateRoute === "string" && candidateRoute.trim()) {
-      /^https?:\/\//i.test(candidateRoute)
-        ? window.open(candidateRoute, "_blank", "noopener,noreferrer")
-        : navigate(candidateRoute);
-      return;
-    }
-
-    // Smart routing based on notification content
-    const text = `${notification?.title || ""} ${notification?.message || ""}`.toLowerCase();
-    if (text.includes("intern") || text.includes("trainee")) setActivePage("interns");
-    else if (text.includes("manager"))                        setActivePage("managers");
-    else if (text.includes("admin"))                          setActivePage("admins");
-    else if (text.includes("setting"))                        setActivePage("settings");
-    else if (text.includes("document") || text.includes("profile")) setActivePage("admins");
-    else                                                      setActivePage("dashboard");
+    setNotifications((prev) => prev.map((item) =>
+      item.id === notification.id ? { ...item, is_read: true } : item
+    ));
+    storeActiveNotificationId(notification.id);
+    setActivePage("notifications");
   };
 
   /* ── FILTERED LISTS ── */
@@ -312,6 +315,12 @@ function SuperAdmin() {
     const key = getRoleKey(u);
     return key === "intern" || key === "buddy";
   });
+  const filteredManagers = managers.filter((manager) =>
+    `${manager.name || manager.full_name || ""}`.toLowerCase().includes(managerSearch.toLowerCase())
+  );
+  const filteredInterns = interns.filter((intern) =>
+    `${intern.name || intern.full_name || ""}`.toLowerCase().includes(internSearch.toLowerCase())
+  );
   const normalizedSettings = serializeSettings(systemSettings);
   const hasUnsavedSettingsChanges =
     JSON.stringify(normalizedSettings) !== JSON.stringify(savedSettingsSnapshot);
@@ -322,6 +331,7 @@ function SuperAdmin() {
     { key: "admins", icon: <FaUserShield />, label: "Admin Management" },
     { key: "managers", icon: <FaUserTie />, label: "Manager Control" },
     { key: "interns", icon: <FaUserGraduate />, label: "Intern Management" },
+    { key: "notifications", icon: <FaBell />, label: "Notifications" },
     { key: "settings", icon: <FaCog />, label: "System Settings" },
   ];
 
@@ -624,11 +634,20 @@ function SuperAdmin() {
         <div><h2>Manager Control</h2><p>All managers from your database</p></div>
         <button className="sa-btn-primary" onClick={() => openAdd("Manager")}>+ Add Manager</button>
       </div>
-      {managers.length === 0 ? (
+      <div className="sa-search-bar">
+        <FaSearch className="sa-search-icon" />
+        <input
+          type="text"
+          value={managerSearch}
+          onChange={(e) => setManagerSearch(e.target.value)}
+          placeholder="Search managers by name"
+        />
+      </div>
+      {filteredManagers.length === 0 ? (
         <div className="sa-empty">No managers found in your database.</div>
       ) : (
         <div className="sa-mgr-grid">
-          {managers.map(m => (
+          {filteredManagers.map(m => (
             <div key={m.id} className={`sa-mgr-card ${!m.is_active ? "sa-mgr-suspended" : ""}`}>
               <div className="sa-mgr-top">
                 <div className="sa-mgr-avatar">{(m.name || m.full_name || "M").charAt(0).toUpperCase()}</div>
@@ -660,12 +679,21 @@ function SuperAdmin() {
         <div><h2>Intern Management</h2></div>
         <button className="sa-btn-primary" onClick={() => openAdd("Intern")}>+ Add Intern</button>
       </div>
-      {interns.length === 0 ? (
+      <div className="sa-search-bar">
+        <FaSearch className="sa-search-icon" />
+        <input
+          type="text"
+          value={internSearch}
+          onChange={(e) => setInternSearch(e.target.value)}
+          placeholder="Search interns by name"
+        />
+      </div>
+      {filteredInterns.length === 0 ? (
         <div className="sa-empty">No interns or buddies found in your database.</div>
       ) : (
         <table className="sa-table">
           <thead><tr><th>#</th><th>Name</th><th>Email</th><th>Department</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
-          <tbody>{interns.map((u, i) => (
+          <tbody>{filteredInterns.map((u, i) => (
             <tr key={u.id}>
               <td className="sa-muted">{i + 1}</td>
               <td>
@@ -692,6 +720,64 @@ function SuperAdmin() {
             </tr>
           ))}</tbody>
         </table>
+      )}
+    </div>
+  );
+
+  const NotificationsPage = () => (
+    <div className="sa-notification-page">
+      <div className="sa-page-head">
+        <div>
+          <h2>Notifications</h2>
+          <p>{notifications.length} total notifications</p>
+        </div>
+        {unreadCount > 0 && (
+          <button className="sa-btn-primary" onClick={handleMarkAllRead}>
+            Mark all as read
+          </button>
+        )}
+      </div>
+
+      {notifications.length === 0 ? (
+        <div className="sa-empty sa-notification-empty">
+          <FaInbox />
+          <span>No notifications available right now.</span>
+        </div>
+      ) : (
+        <div className="sa-notification-grid">
+          {notifications.map((notification) => {
+            const isExpanded = String(expandedNotificationId) === String(notification.id);
+
+            return (
+            <button
+              key={notification.id}
+              type="button"
+              onClick={() => handleNotificationClick(notification)}
+              className={`sa-notification-card ${notification.is_read ? "is-read" : ""}`}
+            >
+              <div style={{ flex: "1 1 420px", minWidth: 0 }}>
+                <div className="sa-notification-card-top">
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span className={`sa-notification-dot ${notification.is_read ? "read" : ""}`} />
+                    <span className="sa-notification-state">{notification.is_read ? "Read" : "New"}</span>
+                  </div>
+                  <span className="sa-notification-time">{formatNotificationTime(notification)}</span>
+                </div>
+                <div className="sa-notification-title">{notification.title}</div>
+                <div className={`sa-notification-message ${isExpanded ? "expanded" : ""}`}>{notification.message}</div>
+                {isExpanded && (
+                  <div className="sa-notification-expanded-note">
+                    Click again to collapse this notification.
+                  </div>
+                )}
+              </div>
+              <div className="sa-notification-actions sa-notification-toggle">
+                <span>{isExpanded ? "Collapse" : "View more"}</span>
+                <FaChevronRight className={isExpanded ? "sa-notification-chevron-open" : ""} />
+              </div>
+            </button>
+          )})}
+        </div>
       )}
     </div>
   );
@@ -1243,6 +1329,7 @@ function SuperAdmin() {
     admins: <AdminsPage />,
     managers: <ManagersPage />,
     interns: <InternsPage />,
+    notifications: <NotificationsPage />,
     settings: <div className="sa-content-inner"><SettingsPanel /></div>,
   };
 

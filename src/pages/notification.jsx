@@ -1,12 +1,12 @@
-import React, { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { getNotifications, markNotificationRead, markAllNotificationsRead } from '../api/api'
+import React, { useEffect, useState } from 'react'
+import { FaBell, FaChevronRight, FaInbox } from 'react-icons/fa'
+import { getNotifications, markAllNotificationsRead, markNotificationRead } from '../api/api'
 import toast from 'react-hot-toast'
 
 function Notification() {
-  const navigate = useNavigate()
   const [notifications, setNotifications] = useState([])
   const [loading, setLoading] = useState(false)
+  const [expandedId, setExpandedId] = useState(null)
 
   const fetchNotifications = async () => {
     setLoading(true)
@@ -14,7 +14,7 @@ function Notification() {
       const res = await getNotifications()
       const data = Array.isArray(res?.data?.data) ? res.data.data : Array.isArray(res?.data) ? res.data : []
       setNotifications(data)
-    } catch (err) {
+    } catch {
       toast.error('Failed to load notifications')
     } finally {
       setLoading(false)
@@ -25,17 +25,20 @@ function Notification() {
     fetchNotifications()
   }, [])
 
-  const handleNotificationClick = async (notif) => {
+  const unreadCount = notifications.filter((notification) => !notification.is_read).length
+
+  const handleNotificationClick = async (notification) => {
+    const nextExpanded = expandedId === notification.id ? null : notification.id
+    setExpandedId(nextExpanded)
+
+    if (notification.is_read) return
+
     try {
-      await markNotificationRead(notif.id)
-      setNotifications(prev =>
-        prev.map(n => n.id === notif.id ? { ...n, is_read: true } : n)
+      await markNotificationRead(notification.id)
+      setNotifications((prev) =>
+        prev.map((item) => item.id === notification.id ? { ...item, is_read: true } : item)
       )
-      
-      if (notif.link) {
-        navigate(notif.link)
-      }
-    } catch (err) {
+    } catch {
       toast.error('Failed to mark notification as read')
     }
   }
@@ -43,99 +46,221 @@ function Notification() {
   const handleMarkAllRead = async () => {
     try {
       await markAllNotificationsRead()
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))
+      setNotifications((prev) => prev.map((notification) => ({ ...notification, is_read: true })))
       toast.success('All notifications marked as read')
-    } catch (err) {
+    } catch {
       toast.error('Failed to mark all notifications as read')
     }
   }
 
-  const unreadCount = notifications.filter(n => !n.is_read).length
-
   return (
-    <div style={{ maxWidth: 900, margin: '0 auto', padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <div>
-          <h2>Notifications</h2>
-          {unreadCount > 0 && <p style={{ color: '#6b7280', fontSize: 14 }}>You have {unreadCount} unread notification{unreadCount !== 1 ? 's' : ''}</p>}
-        </div>
-        {unreadCount > 0 && (
-          <button
-            onClick={handleMarkAllRead}
+    <div style={{ display: 'grid', gap: 20 }}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: 16,
+          padding: '20px 22px',
+          borderRadius: 22,
+          background: '#fff',
+          border: '1px solid #e5e7eb',
+          boxShadow: '0 14px 36px rgba(15, 23, 42, 0.06)',
+          flexWrap: 'wrap',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div
             style={{
-              padding: '8px 16px',
-              background: '#3b82f6',
+              width: 48,
+              height: 48,
+              borderRadius: 16,
+              background: 'linear-gradient(135deg, #003b5c, #00b1b4)',
               color: '#fff',
-              border: 'none',
-              borderRadius: 6,
-              cursor: 'pointer',
-              fontSize: 14,
-              fontWeight: 600,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 18,
+              flexShrink: 0,
             }}
           >
-            Mark All as Read
-          </button>
-        )}
+            <FaBell />
+          </div>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 'clamp(1.2rem, 1rem + 0.8vw, 1.8rem)', color: '#111827' }}>
+              Notifications
+            </h2>
+            <p style={{ margin: '4px 0 0', color: '#6b7280', fontSize: 14 }}>
+              {notifications.length} total notifications
+            </p>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <div
+            style={{
+              padding: '10px 14px',
+              borderRadius: 999,
+              background: unreadCount > 0 ? '#fff7ed' : '#f3f4f6',
+              color: unreadCount > 0 ? '#9a3412' : '#4b5563',
+              fontWeight: 700,
+              fontSize: 13,
+            }}
+          >
+            {unreadCount} unread
+          </div>
+          {unreadCount > 0 && (
+            <button
+              type="button"
+              onClick={handleMarkAllRead}
+              style={{
+                padding: '11px 16px',
+                borderRadius: 12,
+                border: 'none',
+                background: 'linear-gradient(135deg, #003b5c, #00b1b4)',
+                color: '#fff',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              Mark all as read
+            </button>
+          )}
+        </div>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: '#6b7280' }}>Loading...</div>
+        <div style={{ padding: 48, textAlign: 'center', color: '#6b7280' }}>Loading notifications...</div>
       ) : notifications.length === 0 ? (
-        <div style={{ textAlign: 'center', padding: 40, background: '#f9fafb', borderRadius: 8, color: '#6b7280' }}>
-          <p style={{ fontSize: 16, margin: 0 }}>No notifications</p>
+        <div
+          style={{
+            borderRadius: 24,
+            padding: 48,
+            background: '#fff',
+            border: '1px solid #e5e7eb',
+            textAlign: 'center',
+            color: '#6b7280',
+          }}
+        >
+          <div
+            style={{
+              width: 68,
+              height: 68,
+              borderRadius: 20,
+              background: '#f3f4f6',
+              margin: '0 auto 16px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 24,
+              color: '#003b5c',
+            }}
+          >
+            <FaInbox />
+          </div>
+          <h3 style={{ margin: 0, color: '#1f2937' }}>No notifications yet</h3>
+          <p style={{ marginTop: 8 }}>When new alerts arrive from the system, they will show up here.</p>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {notifications.map(notif => {
-            const createdAt = notif.createdAt || notif.created_at
-            const timestamp = createdAt ? new Date(createdAt).toLocaleString() : 'Unknown time'
-            
+        <div style={{ display: 'grid', gap: 14 }}>
+          {notifications.map((notification) => {
+            const isExpanded = expandedId === notification.id
+
             return (
-              <div
-                key={notif.id}
-                onClick={() => handleNotificationClick(notif)}
+              <button
+                key={notification.id}
+                type="button"
+                onClick={() => handleNotificationClick(notification)}
                 style={{
-                  padding: 16,
-                  background: notif.is_read ? '#fff' : '#eff6ff',
-                  border: `1px solid ${notif.is_read ? '#e5e7eb' : '#bfdbfe'}`,
-                  borderRadius: 8,
+                  width: '100%',
+                  textAlign: 'left',
+                  background: notification.is_read ? '#fff' : '#eef8ff',
+                  border: `1px solid ${notification.is_read ? '#e5e7eb' : '#bfdbfe'}`,
+                  borderRadius: 20,
+                  padding: 18,
+                  boxShadow: '0 10px 30px rgba(15, 23, 42, 0.05)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 18,
+                  flexWrap: 'wrap',
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = notif.is_read ? '#f9fafb' : '#dbeafe'
-                  e.currentTarget.style.borderColor = notif.is_read ? '#d1d5db' : '#93c5fd'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = notif.is_read ? '#fff' : '#eff6ff'
-                  e.currentTarget.style.borderColor = notif.is_read ? '#e5e7eb' : '#bfdbfe'
                 }}
               >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 700, fontSize: 15, marginBottom: 6, color: '#1f2937' }}>
-                      {notif.title}
+                <div style={{ flex: '1 1 420px', minWidth: 0 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                      <span
+                        style={{
+                          width: 10,
+                          height: 10,
+                          borderRadius: '50%',
+                          background: notification.is_read ? '#cbd5e1' : '#00b1b4',
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span style={{ fontSize: 12, color: '#6b7280', fontWeight: 700 }}>
+                        {notification.is_read ? 'Read' : 'New'}
+                      </span>
                     </div>
-                    <div style={{ fontSize: 14, color: '#374151', marginBottom: 8 }}>
-                      {notif.message}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#9ca3af' }}>
-                      {timestamp}
-                    </div>
+                    <span style={{ fontSize: 12, color: '#9ca3af' }}>
+                      {formatNotificationTime(notification)}
+                    </span>
                   </div>
-                  {!notif.is_read && (
-                    <div style={{
-                      width: 12,
-                      height: 12,
-                      background: '#3b82f6',
-                      borderRadius: '50%',
-                      marginLeft: 12,
-                      marginTop: 2,
-                      flexShrink: 0,
-                    }} />
-                  )}
+
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: '#111827' }}>
+                      {notification.title}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 8,
+                        fontSize: 14,
+                        lineHeight: 1.7,
+                        color: '#4b5563',
+                        display: '-webkit-box',
+                        WebkitLineClamp: isExpanded ? 'unset' : 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        whiteSpace: isExpanded ? 'normal' : 'initial',
+                      }}
+                    >
+                      {notification.message}
+                    </div>
+                    {isExpanded && (
+                      <div
+                        style={{
+                          marginTop: 14,
+                          padding: '12px 14px',
+                          borderRadius: 14,
+                          background: '#f8fafc',
+                          border: '1px solid #e5e7eb',
+                          color: '#4b5563',
+                          fontSize: 13,
+                          lineHeight: 1.7,
+                        }}
+                      >
+                        Click again to collapse this notification.
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 8,
+                    color: '#00b1b4',
+                    fontWeight: 700,
+                    fontSize: 13,
+                    flex: '0 0 auto',
+                  }}
+                >
+                  {isExpanded ? 'Collapse' : 'View more'}
+                  <FaChevronRight style={{ transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s ease' }} />
+                </div>
+              </button>
             )
           })}
         </div>

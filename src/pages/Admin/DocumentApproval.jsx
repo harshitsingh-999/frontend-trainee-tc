@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { getAllDocuments, reviewDocument, getAllProfileChangeRequests, approveProfileChangeRequest, rejectProfileChangeRequest } from '../../api/api'
-import { FiFilter, FiX, FiCheck } from 'react-icons/fi'
+import { getAllDocuments, reviewDocument, getAllProfileChangeRequests } from '../../api/api'
 import toast from 'react-hot-toast'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL
@@ -25,6 +24,65 @@ function StatusBadge({ status }) {
     </span>
   )
 }
+
+const approvalShellStyle = {
+  maxWidth: 1080,
+  margin: '0 auto',
+  padding: '24px 24px 28px',
+}
+
+const approvalFilterBarStyle = {
+  display: 'flex',
+  gap: 12,
+  alignItems: 'center',
+  flexWrap: 'wrap',
+  marginBottom: 24,
+  paddingBottom: 12,
+  borderBottom: '1px solid #e5e7eb',
+}
+
+const approvalFilterButton = (active) => ({
+  padding: '9px 18px',
+  border: 'none',
+  borderRadius: 8,
+  cursor: 'pointer',
+  fontSize: 13,
+  fontWeight: 700,
+  background: active ? '#00b1b4' : '#f3f4f6',
+  color: active ? '#fff' : '#4b5563',
+  transition: 'all 0.15s ease',
+})
+
+const approvalCardStyle = {
+  background: '#fff',
+  border: '1px solid #e5e7eb',
+  borderRadius: 12,
+  padding: 20,
+}
+
+const approvalEmptyStyle = {
+  textAlign: 'center',
+  padding: '48px 20px',
+  background: '#fff',
+  borderRadius: 12,
+  border: '1px solid #e5e7eb',
+  color: '#6b7280',
+}
+
+const approvalTabButton = (active) => ({
+  padding: '10px 22px',
+  border: 'none',
+  background: 'none',
+  cursor: 'pointer',
+  fontWeight: 700,
+  fontSize: 14,
+  color: active ? '#3b82f6' : '#6b7280',
+  borderBottom: active ? '2px solid #3b82f6' : '2px solid transparent',
+  marginBottom: -2,
+  transition: 'all 0.15s ease',
+  minWidth: 210,
+  textAlign: 'center',
+})
 
 /* ── Documents Tab ─────────────────────────────────────────────────────────── */
 function DocumentsTab() {
@@ -67,17 +125,17 @@ function DocumentsTab() {
 
   return (
     <div>
-      <div style={{ display:'flex', gap:12, marginBottom:24, borderBottom:'1px solid #e5e7eb', paddingBottom:12 }}>
+      <div style={approvalFilterBarStyle}>
         {['pending','approved','rejected'].map(s => (
-          <button key={s} onClick={() => setFilter(s)} style={{ padding:'8px 16px', border:'none', borderRadius:6, cursor:'pointer', fontWeight:600, textTransform:'capitalize', background: filter===s?'#3b82f6':'#f3f4f6', color: filter===s?'#fff':'#374151' }}>{s}</button>
+          <button key={s} onClick={() => setFilter(s)} style={{ ...approvalFilterButton(filter === s), textTransform:'capitalize' }}>{s}</button>
         ))}
       </div>
       {loading ? <div style={{ textAlign:'center', padding:40, color:'#6b7280' }}>Loading...</div>
-        : documents.length === 0 ? <div style={{ textAlign:'center', padding:40, background:'#f9fafb', borderRadius:8, color:'#6b7280' }}>No {filter} documents</div>
+        : documents.length === 0 ? <div style={approvalEmptyStyle}>No {filter} documents</div>
         : (
           <div style={{ display:'flex', flexDirection:'column', gap:16 }}>
             {documents.map(doc => (
-              <div key={doc.id} style={{ background:'#fff', border:'1px solid #e5e7eb', borderRadius:8, padding:16 }}>
+              <div key={doc.id} style={approvalCardStyle}>
                 {reviewingId === doc.id ? (
                   <div style={{ background:'#f9fafb', padding:16, borderRadius:8 }}>
                     <h4 style={{ margin:'0 0 12px 0' }}>{approvalAction==='approved'?'Approve':'Decline'} Document</h4>
@@ -130,10 +188,6 @@ function ProfileChangesTab() {
   const [filteredRequests, setFilteredRequests] = useState([])
   const [loading, setLoading]                 = useState(true)
   const [filter, setFilter]                   = useState('pending_approval')
-  const [selectedRequest, setSelectedRequest] = useState(null)
-  const [reviewModal, setReviewModal]         = useState(false)
-  const [rejectionReason, setRejectionReason] = useState('')
-  const [actionLoading, setActionLoading]     = useState(false)
 
   const fetchRequests = useCallback(async () => {
     try {
@@ -176,33 +230,11 @@ function ProfileChangesTab() {
     )
   }
 
-  const handleApprove = async () => {
-    try {
-      setActionLoading(true)
-      await approveProfileChangeRequest(selectedRequest.id, {})
-      toast.success('Profile change approved')
-      setReviewModal(false); setSelectedRequest(null); setRejectionReason(''); fetchRequests()
-    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to approve') }
-    finally { setActionLoading(false) }
-  }
-
-  const handleReject = async () => {
-    if (!rejectionReason.trim()) { toast.error('Please provide a rejection reason'); return }
-    try {
-      setActionLoading(true)
-      await rejectProfileChangeRequest(selectedRequest.id, { rejection_reason: rejectionReason })
-      toast.success('Profile change rejected')
-      setReviewModal(false); setSelectedRequest(null); setRejectionReason(''); fetchRequests()
-    } catch (err) { toast.error(err?.response?.data?.message || 'Failed to reject') }
-    finally { setActionLoading(false) }
-  }
-
   return (
     <div>
-      <div style={{ marginBottom:25, display:'flex', gap:12, alignItems:'center' }}>
-        <FiFilter size={18} style={{ color:'#6b7280' }} />
+      <div style={approvalFilterBarStyle}>
         {['pending_approval','completed','rejected','all'].map(s => (
-          <button key={s} onClick={() => setFilter(s)} style={{ padding:'8px 16px', borderRadius:6, border:'none', fontSize:13, fontWeight:600, cursor:'pointer', backgroundColor: filter===s?'#00b1b4':'#e5e7eb', color: filter===s?'white':'#4b5563' }}>
+          <button key={s} onClick={() => setFilter(s)} style={approvalFilterButton(filter === s)}>
             {s === 'pending_approval' ? 'Pending' : s.charAt(0).toUpperCase() + s.slice(1)}
           </button>
         ))}
@@ -211,14 +243,14 @@ function ProfileChangesTab() {
       {loading && <div style={{ textAlign:'center', padding:'60px 20px', color:'#6b7280' }}>Loading...</div>}
 
       {!loading && filteredRequests.length === 0 && (
-        <div style={{ textAlign:'center', padding:'60px 20px', background:'white', borderRadius:12, border:'1px solid #e5e7eb', color:'#6b7280' }}>No profile change requests found</div>
+        <div style={approvalEmptyStyle}>No profile change requests found</div>
       )}
 
       {!loading && filteredRequests.length > 0 && (
         <div style={{ display:'grid', gap:16 }}>
           {filteredRequests.map(req => (
-            <div key={req.id} style={{ background:'white', borderRadius:12, border:'1px solid #e5e7eb', padding:20, display:'flex', justifyContent:'space-between', alignItems:'flex-start' }}>
-              <div style={{ flex:1 }}>
+            <div key={req.id} style={approvalCardStyle}>
+              <div style={{ width:'100%' }}>
                 <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:12 }}>
                   <h3 style={{ fontSize:16, fontWeight:600, color:'#111827', margin:0 }}>{req.requestor?.name || 'N/A'}</h3>
                   <StatusBadge status={req.status} />
@@ -233,52 +265,8 @@ function ProfileChangesTab() {
                   <div><div style={{ color:'#6b7280', fontWeight:500 }}>Reviewed On</div><div style={{ color:'#111827', marginTop:4 }}>{fmtDate(req.reviewed_at)}</div></div>
                 </div>
               </div>
-              {req.status === 'pending_approval' && (
-                <div style={{ display:'flex', gap:10, marginLeft:20 }}>
-                  <button onClick={() => { setSelectedRequest(req); setRejectionReason(''); setReviewModal(true) }}
-                    style={{ padding:'8px 16px', borderRadius:6, border:'none', background:'#fef2f2', color:'#dc2626', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
-                    <FiX size={16} /> Reject
-                  </button>
-                  <button onClick={() => { setSelectedRequest(req); setRejectionReason(''); setReviewModal(true) }}
-                    style={{ padding:'8px 16px', borderRadius:6, border:'none', background:'#f0fdf4', color:'#16a34a', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', gap:6, whiteSpace:'nowrap' }}>
-                    <FiCheck size={16} /> Approve
-                  </button>
-                </div>
-              )}
             </div>
           ))}
-        </div>
-      )}
-
-      {reviewModal && selectedRequest && (
-        <div style={{ position:'fixed', top:0, left:0, right:0, bottom:0, backgroundColor:'rgba(0,0,0,0.6)', display:'flex', alignItems:'center', justifyContent:'center', zIndex:1000 }}
-          onClick={() => setReviewModal(false)}>
-          <div style={{ background:'white', borderRadius:14, padding:30, width:'100%', maxWidth:500, boxShadow:'0 20px 25px -5px rgba(0,0,0,0.1)', maxHeight:'80vh', overflowY:'auto' }}
-            onClick={e => e.stopPropagation()}>
-            <h2 style={{ fontSize:18, fontWeight:700, color:'#111827', margin:'0 0 20px 0' }}>Review Profile Change</h2>
-            <div style={{ display:'grid', gap:15, marginBottom:25, fontSize:13 }}>
-              <div><div style={{ color:'#6b7280', fontWeight:600, marginBottom:4 }}>Employee</div><div style={{ color:'#111827' }}>{selectedRequest.requestor?.name || 'N/A'}</div></div>
-              <div><div style={{ color:'#6b7280', fontWeight:600, marginBottom:4 }}>Email</div><div style={{ color:'#111827' }}>{selectedRequest.requestor?.email || 'N/A'}</div></div>
-              <div>
-                <div style={{ color:'#6b7280', fontWeight:600, marginBottom:4 }}>Requested Changes:</div>
-                <div style={{ background:'#f9fafb', borderRadius:8, padding:12, border:'1px solid #e5e7eb', fontSize:12 }}><ChangesTable request={selectedRequest} /></div>
-              </div>
-            </div>
-            <div style={{ marginBottom:20 }}>
-              <label style={{ display:'block', color:'#6b7280', fontWeight:600, fontSize:13, marginBottom:8 }}>Rejection Reason (required if rejecting)</label>
-              <textarea value={rejectionReason} onChange={e => setRejectionReason(e.target.value)} placeholder="Provide reason for rejection..."
-                style={{ width:'100%', border:'1px solid #d1d5db', borderRadius:6, padding:'10px 12px', fontSize:13, fontFamily:'inherit', resize:'vertical', minHeight:80 }} />
-            </div>
-            <div style={{ display:'flex', gap:10, justifyContent:'flex-end' }}>
-              <button onClick={() => setReviewModal(false)} style={{ padding:'10px 20px', borderRadius:6, border:'1px solid #d1d5db', background:'white', color:'#6b7280', fontSize:13, fontWeight:600, cursor:'pointer' }}>Cancel</button>
-              <button onClick={handleReject} disabled={actionLoading} style={{ padding:'10px 20px', borderRadius:6, border:'none', background:'#dc2626', color:'white', fontSize:13, fontWeight:600, cursor: actionLoading?'not-allowed':'pointer', opacity: actionLoading?0.7:1 }}>
-                {actionLoading ? 'Processing...' : 'Reject'}
-              </button>
-              <button onClick={handleApprove} disabled={actionLoading} style={{ padding:'10px 20px', borderRadius:6, border:'none', background:'#16a34a', color:'white', fontSize:13, fontWeight:600, cursor: actionLoading?'not-allowed':'pointer', opacity: actionLoading?0.7:1 }}>
-                {actionLoading ? 'Processing...' : 'Approve'}
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>
@@ -302,20 +290,14 @@ function DocumentApproval() {
   }
 
   return (
-    <div style={{ maxWidth:1000, margin:'0 auto', padding:24 }}>
+    <div style={approvalShellStyle}>
       <div style={{ marginBottom:24 }}>
-        <h2 style={{ margin:'0 0 4px 0' }}>Approvals</h2>
-        <p style={{ color:'#6b7280', margin:0 }}>Review documents and profile change requests from interns</p>
+        <h2 style={{ margin:0, fontSize:20, fontWeight:700 }}>Approvals</h2>
       </div>
 
-      <div style={{ display:'flex', gap:0, marginBottom:28, borderBottom:'2px solid #e5e7eb' }}>
+      <div style={{ display:'flex', justifyContent:'flex-start', alignItems:'stretch', gap:0, marginBottom:28, borderBottom:'2px solid #e5e7eb', width:'100%' }}>
         {[{ key:'documents', label:'📄 Document Approvals' }, { key:'profiles', label:'👤 Profile Changes' }].map(({ key, label }) => (
-          <button key={key} onClick={() => switchTab(key)} style={{
-            padding:'10px 22px', border:'none', background:'none', cursor:'pointer', fontWeight:700, fontSize:14,
-            color: activeTab===key ? '#3b82f6' : '#6b7280',
-            borderBottom: activeTab===key ? '2px solid #3b82f6' : '2px solid transparent',
-            marginBottom: -2, transition:'all 0.15s',
-          }}>{label}</button>
+          <button key={key} onClick={() => switchTab(key)} style={approvalTabButton(activeTab===key)}>{label}</button>
         ))}
       </div>
 

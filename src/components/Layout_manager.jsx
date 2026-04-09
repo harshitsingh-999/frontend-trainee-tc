@@ -12,6 +12,7 @@ import { useAuth } from '../context/authcontext.jsx'
 import ProfileDrawer from '../pages/profiledrawer.jsx'
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from '../api/api'
 import api from '../api/login_api.js'
+import { formatNotificationTime, storeActiveNotificationId } from '../utils/notifications.js'
 import '../pages/SuperAdmin/superadmin.css'
 
 const API_BASE = api.defaults.baseURL
@@ -169,12 +170,8 @@ function LayoutManager({ children }) {
     setNotifOpen(false)
     try { await markNotificationRead(notif.id) } catch { /* non-blocking */ }
     setNotifications((prev) => prev.map((n) => n.id === notif.id ? { ...n, is_read: true } : n))
-    const route = resolveNotifRoute(notif, user?.role_id)
-    if (/^https?:\/\//i.test(route)) {
-      window.open(route, '_blank', 'noopener,noreferrer')
-    } else {
-      navigate(route)
-    }
+    storeActiveNotificationId(notif.id)
+    navigate('/notifications')
   }
 
   const renderAvatar = (fallback) => {
@@ -292,8 +289,7 @@ function LayoutManager({ children }) {
                       </p>
                     ) : (
                       notifications.map((notif) => {
-                        const createdAt = notif.createdAt || notif.created_at
-                        const timestamp = createdAt ? new Date(createdAt).toLocaleString() : 'Unknown time'
+                        const timestamp = formatNotificationTime(notif)
                         return (
                           <div key={notif.id} onClick={() => handleNotifClick(notif)}
                             style={{
