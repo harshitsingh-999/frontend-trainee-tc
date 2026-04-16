@@ -104,10 +104,11 @@
 //   const checkedOut = !!todayAttendance?.check_out_time
 //   const pendingTasks = myTasks.filter(t => t.status !== 'completed').length
 
-//   // Check if internship is expired â€” compare against actual date so admin extensions are respected
+//   // Check if internship is expired — compare against actual date so admin extensions are respected
+//   const todayISO = new Date().toISOString().slice(0, 10)
 //   const isInternshipExpired = isIntern && !traineeLoading &&
 //     trainee?.expected_end_date &&
-//     new Date(trainee.expected_end_date) < new Date(new Date().toDateString())
+//     trainee.expected_end_date < todayISO
 
 //   if (isInternshipExpired) {
 //     return (
@@ -670,17 +671,45 @@ function calculateDaysRemaining(endDate) {
 
 function getGreeting() {
   const h = new Date().getHours()
-  if (h < 12) return { text: 'Good Morning', icon: 'ðŸŒ…' }
-  if (h < 17) return { text: 'Good Afternoon', icon: 'â˜€ï¸' }
-  return { text: 'Good Evening', icon: 'ðŸŒ™' }
+  if (h < 12) return { text: 'Good Morning', icon: '🌅' }
+  if (h < 17) return { text: 'Good Afternoon', icon: '☀️' }
+  return { text: 'Good Evening', icon: '🌙' }
 }
 
 function formatTime(time) {
-  if (!time) return 'â€”'
+  if (!time) return '—'
   const [h, m] = time.split(':')
   const hour = parseInt(h)
   const ampm = hour >= 12 ? 'PM' : 'AM'
   return `${hour % 12 || 12}:${m} ${ampm}`
+}
+
+function parseTimeToMinutes(time) {
+  if (!time) return null
+  const [hours, minutes] = time.split(':')
+  const h = Number(hours)
+  const m = Number(minutes)
+  return Number.isFinite(h) && Number.isFinite(m) ? h * 60 + m : null
+}
+
+function formatDuration(minutes) {
+  if (minutes == null) return '—'
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  return `${hours}h ${mins}m`
+}
+
+function formatTimeFromMinutes(minutes) {
+  if (minutes == null) return '—'
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  const ampm = hours >= 12 ? 'PM' : 'AM'
+  const displayHour = hours % 12 || 12
+  return `${displayHour}:${mins.toString().padStart(2, '0')} ${ampm}`
+}
+
+function isPresentStatus(status) {
+  return ['present', 'late', 'half_day'].includes(status)
 }
 
 function Dashboard() {
@@ -767,6 +796,51 @@ function Dashboard() {
     return new Date(t.due_date) < new Date(new Date().toDateString())
   }).length
   const activeTasks = myTasks.filter(t => t.status !== 'completed' && !(t?.due_date && new Date(t.due_date) < new Date(new Date().toDateString()))).length
+
+  const attendanceRecords = attendanceHistory
+    .filter(r => r?.attendance_date)
+    .sort((a, b) => new Date(b.attendance_date) - new Date(a.attendance_date))
+
+  const recentAttendanceRecords = attendanceRecords.slice(0, 21)
+  const checkInMinutes = recentAttendanceRecords
+    .map(r => parseTimeToMinutes(r.check_in_time))
+    .filter(v => v != null)
+  const avgCheckInMinutes = checkInMinutes.length ? Math.round(checkInMinutes.reduce((sum, v) => sum + v, 0) / checkInMinutes.length) : null
+
+  const workDurations = recentAttendanceRecords
+    .map(r => {
+      const start = parseTimeToMinutes(r.check_in_time)
+      const end = parseTimeToMinutes(r.check_out_time)
+      return start != null && end != null && end >= start ? end - start : null
+    })
+    .filter(v => v != null)
+  const avgWorkMinutes = workDurations.length ? Math.round(workDurations.reduce((sum, v) => sum + v, 0) / workDurations.length) : null
+
+  const now = new Date()
+  let expectedDate = new Date()
+  let attendanceStreak = 0
+  for (const record of attendanceRecords) {
+    const recordDate = new Date(record.attendance_date)
+    if (recordDate.toDateString() !== expectedDate.toDateString()) break
+    if (!isPresentStatus(record.status)) break
+    attendanceStreak += 1
+    expectedDate.setDate(expectedDate.getDate() - 1)
+  }
+
+  const currentMonth = now.getMonth()
+  const currentYear = now.getFullYear()
+  const presentThisMonth = attendanceRecords.filter(r => {
+    const d = new Date(r.attendance_date)
+    return d.getFullYear() === currentYear && d.getMonth() === currentMonth && isPresentStatus(r.status)
+  }).length
+
+  const attendanceSummaryCards = [
+    { label: 'Attendance Streak', value: `${attendanceStreak}d`, detail: 'Consecutive active days', bg: 'linear-gradient(135deg, #2563eb, #2dd4bf)' },
+    { label: 'Avg Check-in', value: formatTimeFromMinutes(avgCheckInMinutes), detail: 'Average arrival time', bg: 'linear-gradient(135deg, #8b5cf6, #6366f1)' },
+    { label: 'Avg Work Hours', value: formatDuration(avgWorkMinutes), detail: 'Average logged time', bg: 'linear-gradient(135deg, #22c55e, #0f766e)' },
+    { label: 'Present This Month', value: presentThisMonth, detail: 'Days marked present', bg: 'linear-gradient(135deg, #f97316, #f59e0b)' },
+  ]
+
   const todayTaskItems = [...myTasks]
     .filter(task => task.status !== 'completed')
     .sort((a, b) => new Date(a?.due_date || 0) - new Date(b?.due_date || 0))
@@ -782,10 +856,11 @@ function Dashboard() {
       ? `Good momentum so far. You have ${pendingTasks} active task${pendingTasks !== 1 ? 's' : ''} left, so keep updating progress and submit your work on time.`
       : 'Everything looks on track. Keep your updates clean and continue maintaining this pace.'
 
-  // Check if internship is expired â€” compare against actual date so admin extensions are respected
+  const todayISO = new Date().toISOString().slice(0, 10)
+  // Check if internship is expired — compare against actual date so admin extensions are respected
   const isInternshipExpired = isIntern && !traineeLoading &&
     trainee?.expected_end_date &&
-    new Date(trainee.expected_end_date) < new Date(new Date().toDateString())
+    trainee.expected_end_date < todayISO
 
   if (isInternshipExpired) {
     return (
@@ -797,7 +872,7 @@ function Dashboard() {
           background: '#fff', borderRadius: 20, padding: '48px 40px', maxWidth: 480,
           boxShadow: '0 4px 32px rgba(0,0,0,0.10)', border: '1px solid #fecaca',
         }}>
-          <div style={{ fontSize: 56, marginBottom: 16 }}>ðŸŽ“</div>
+          <div style={{ fontSize: 56, marginBottom: 16 }}>⏳</div>
           <h2 style={{ fontSize: 24, fontWeight: 800, color: '#111827', margin: '0 0 12px' }}>
             Internship Completed
           </h2>
@@ -811,7 +886,7 @@ function Dashboard() {
             background: '#fef9c3', border: '1px solid #fde047', borderRadius: 10,
             padding: '12px 16px', fontSize: 13, color: '#854d0e', fontWeight: 500,
           }}>
-            ðŸ“§ Reach out to your admin/manager to extend or close your internship.
+            📢 Reach out to your admin/manager to extend or close your internship.
           </div>
           <button
             onClick={async () => { await logout(); navigate('/login') }}
@@ -946,6 +1021,40 @@ function Dashboard() {
               </div>
             )}
 
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 12,
+              alignItems: 'center',
+              marginBottom: 20,
+            }}>
+              <button
+                onClick={checkedIn && !checkedOut ? handleCheckOut : !checkedIn ? handleCheckIn : undefined}
+                disabled={attendanceBusy || checkedOut}
+                style={{
+                  padding: '14px 24px',
+                  borderRadius: 14,
+                  border: 'none',
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: '#fff',
+                  cursor: checkedOut ? 'not-allowed' : 'pointer',
+                  background: checkedOut ? '#9ca3af' : checkedIn ? '#16a34a' : '#2563eb',
+                  minWidth: 180,
+                }}
+              >
+                {checkedOut ? 'Punched Out' : checkedIn ? 'Punch Out' : attendanceBusy ? 'Processing…' : 'Punch In'}
+              </button>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6, minWidth: 180 }}>
+                <span style={{ fontSize: 13, color: '#94a3b8' }}>
+                  Today: {checkedOut ? 'Checked out' : checkedIn ? 'Checked in' : 'Not marked'}
+                </span>
+                <span style={{ fontSize: 13, color: '#94a3b8' }}>
+                  In: {formatTime(todayAttendance?.check_in_time)} · Out: {formatTime(todayAttendance?.check_out_time)}
+                </span>
+              </div>
+            </div>
+
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 16 }}>
               {[
                 { label: 'Total Tasks', value: myTasks.length, detail: 'Assigned to you', bg: 'linear-gradient(135deg, #2678f3, #1d4ed8)', icon: '□' },
@@ -982,6 +1091,28 @@ function Dashboard() {
                     <div style={{ fontSize: 44, fontWeight: 800, lineHeight: 1 }}>{card.value}</div>
                     <div style={{ marginTop: 8, opacity: 0.92, fontSize: 14 }}>{card.detail}</div>
                   </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginTop: 18 }}>
+              {attendanceSummaryCards.map(card => (
+                <div key={card.label} style={{
+                  background: card.bg,
+                  color: '#fff',
+                  borderRadius: 18,
+                  padding: '20px 18px',
+                  minHeight: 120,
+                  boxShadow: '0 14px 28px rgba(15, 23, 42, 0.12)',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'space-between',
+                }}>
+                  <div style={{ fontSize: 14, fontWeight: 700, opacity: 0.92, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {card.label}
+                  </div>
+                  <div style={{ fontSize: 38, fontWeight: 800, margin: '10px 0 4px' }}>{card.value}</div>
+                  <div style={{ opacity: 0.92, fontSize: 13, lineHeight: 1.5 }}>{card.detail}</div>
                 </div>
               ))}
             </div>

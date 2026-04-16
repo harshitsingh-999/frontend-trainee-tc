@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { FaBell, FaChevronRight, FaInbox } from 'react-icons/fa'
 import { getNotifications, markAllNotificationsRead, markNotificationRead } from '../api/api'
+import { formatNotificationTime } from '../utils/notifications.js'
 import toast from 'react-hot-toast'
 
 function Notification() {
